@@ -38,6 +38,9 @@ add_dependency() {
         print_error "Dependency not provided"
         return 1
     fi
+
+    echo "Adding dependency: $dependency"
+
     uv add $dependency
     return 0
 }
@@ -154,7 +157,7 @@ case "${1:-start}" in
         install_dependencies
         ;;
     add)
-        add_dependency "$1"
+        add_dependency "$2"
         ;;
     setup)
         setup_venv
