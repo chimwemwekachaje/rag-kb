@@ -1,0 +1,7 @@
+llama-cpp-python
+langchain-chroma
+langchain-text-splitters
+langchain-core
+langchain-community
+gradio
+gradio-pdf

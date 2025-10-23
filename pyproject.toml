@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "llama-rag-kb"
+version = "0.1.0"
+description = "RAG Knowledge Base using Llama.cpp and GGUF models"
+authors = [
+    {name = "Your Name", email = "your.email@example.com"},
+]
+dependencies = [
+    "llama-cpp-python",
+    "langchain-chroma",
+    "langchain-text-splitters",
+    "langchain-core",
+    "langchain-community",
+    "gradio",
+    "gradio-pdf",
+]
+requires-python = ">=3.12"
+
+[project.scripts]
+llama-rag-kb = "app:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
