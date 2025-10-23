@@ -48,7 +48,6 @@ Thumbs.db
 
 # Project specific
 chroma/
-models/*.gguf
 *.log
 
 # Jupyter Notebook
