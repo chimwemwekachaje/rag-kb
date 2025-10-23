@@ -5,3 +5,4 @@ langchain-core
 langchain-community
 gradio
 gradio-pdf
+pypdf>=6.1.3

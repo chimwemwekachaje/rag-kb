@@ -23,6 +23,7 @@ class NomicEmbeddingFunction:
             n_threads=4,
             embedding_mode=True,
             verbose=False,
+            logits_all=False,  # Reduce warnings for embedding models
         )
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
