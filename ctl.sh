@@ -33,8 +33,8 @@ print_error() {
 }
 
 add_dependency() {
-    local dependency="$2"
-    if [ ! -z "$dependency" ]; then
+    local dependency="$1"
+    if [ -z "$dependency" ]; then
         print_error "Dependency not provided"
         return 1
     fi
@@ -154,7 +154,7 @@ case "${1:-start}" in
         install_dependencies
         ;;
     add)
-        add_dependency "$2"
+        add_dependency "$1"
         ;;
     setup)
         setup_venv
