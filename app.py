@@ -252,20 +252,24 @@ def build_nested_accordions(data_path: str) -> Tuple[Dict, List]:
         if not os.path.exists(path):
             return items
             
-        for item in sorted(os.listdir(path)):
-            if item.startswith('.'):
-                continue
+        try:
+            for item in sorted(os.listdir(path)):
+                if item.startswith('.'):
+                    continue
+                    
+                item_path = os.path.join(path, item)
+                item_relative = os.path.join(relative_path, item) if relative_path else item
                 
-            item_path = os.path.join(path, item)
-            item_relative = os.path.join(relative_path, item) if relative_path else item
-            
-            if os.path.isfile(item_path) and item.endswith('.pdf'):
-                pdf_files.append((item, item_path))
-                items[item] = item_path
-            elif os.path.isdir(item_path):
-                sub_items = scan_directory(item_path, item_relative)
-                if sub_items:
-                    items[item] = sub_items
+                if os.path.isfile(item_path) and item.endswith('.pdf'):
+                    pdf_files.append((item, item_path))
+                    items[item] = item_path
+                elif os.path.isdir(item_path):
+                    sub_items = scan_directory(item_path, item_relative)
+                    if sub_items:
+                        items[item] = sub_items
+        except (FileNotFoundError, PermissionError):
+            # Handle cases where directory access fails
+            pass
                     
         return items
     
