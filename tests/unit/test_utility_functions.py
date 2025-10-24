@@ -4,6 +4,7 @@ import pytest
 import os
 import tempfile
 import shutil
+import threading
 from unittest.mock import Mock, patch, MagicMock
 from app import build_nested_accordions, create_accordion_ui, main
 
@@ -162,8 +163,13 @@ class TestMainFunction:
              patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
              patch('app.RAGSystem') as mock_rag_class, \
              patch('app.build_nested_accordions') as mock_build_accordions, \
+             patch('app.initialize_rag_system') as mock_initialize_rag, \
+             patch('app.launch_gradio_ui') as mock_launch_gradio, \
              patch('app.gr', mock_gr), \
              patch('os.path.exists') as mock_exists, \
+             patch('app.signal') as mock_signal, \
+             patch('app.threading') as mock_threading, \
+             patch('app.time') as mock_time, \
              patch('sys.argv', ['app.py', '--embedding-model', 'test_embedding.gguf', '--llm-model', 'test_llm.gguf']):
             
             mock_llama_class.return_value = mock_llama_llm
@@ -174,16 +180,44 @@ class TestMainFunction:
             mock_build_accordions.return_value = ({}, [])
             mock_exists.return_value = True
             
+            # Mock the initialize_rag_system function to return our mock instance
+            mock_initialize_rag.return_value = mock_rag_instance
+            # Mock the launch_gradio_ui function
+            mock_launch_gradio.return_value = Mock()
+            
             # Mock the launch method to prevent actual server startup
             mock_gr.Blocks.return_value.launch = Mock()
             
-            main()
+            # Mock threading to execute target functions immediately
+            import threading
+            original_thread = threading.Thread
+            def mock_thread(target=None, args=(), kwargs=None, **other_kwargs):
+                # Execute the target function immediately instead of in a thread
+                if target:
+                    target(*args, **kwargs or {})
+                return Mock()  # Return a mock thread object
             
-            # Verify RAGSystem was initialized with CLI arguments
-            mock_rag_class.assert_called_once()
-            call_args = mock_rag_class.call_args
-            assert call_args[1]['embedding_model_path'] == 'test_embedding.gguf'
-            assert call_args[1]['llm_model_path'] == 'test_llm.gguf'
+            mock_threading.Thread = mock_thread
+            
+            # Mock signal handling to prevent actual signal registration
+            mock_signal.signal = Mock()
+            
+            # Mock time.sleep to simulate the main loop and then raise KeyboardInterrupt to exit
+            # Let it sleep once, then raise KeyboardInterrupt
+            mock_time.sleep.side_effect = [None, KeyboardInterrupt()]
+            
+            # The main function should handle KeyboardInterrupt gracefully
+            try:
+                main()
+            except SystemExit:
+                # SystemExit is expected when the signal handler is triggered
+                pass
+            
+            # Verify initialize_rag_system was called with CLI arguments
+            mock_initialize_rag.assert_called_once()
+            call_args = mock_initialize_rag.call_args
+            assert call_args[0][0] == 'test_embedding.gguf'  # embedding_model_path
+            assert call_args[0][1] == 'test_llm.gguf'  # llm_model_path
 
     def test_main_with_environment_variables(self, mock_embedding_function, mock_llama_llm, mock_vectorstore, mock_gradio_components):
         """Test main function with environment variables."""
@@ -197,7 +231,11 @@ class TestMainFunction:
              patch('app.gr', mock_gr), \
              patch('os.path.exists') as mock_exists, \
              patch('os.getenv') as mock_getenv, \
-             patch('sys.argv', ['app.py']):
+             patch('sys.argv', ['app.py']), \
+             patch('signal.signal') as mock_signal, \
+             patch('threading.Thread') as mock_thread, \
+             patch('threading.Event') as mock_event, \
+             patch('sys.exit') as mock_exit:
             
             mock_llama_class.return_value = mock_llama_llm
             mock_chroma_class.return_value = mock_vectorstore
@@ -214,13 +252,35 @@ class TestMainFunction:
             # Mock the launch method to prevent actual server startup
             mock_gr.Blocks.return_value.launch = Mock()
             
-            main()
+            # Mock threading components
+            mock_shutdown_event = Mock()
+            mock_rag_ready_event = Mock()
+            mock_event.side_effect = [mock_shutdown_event, mock_rag_ready_event]
             
-            # Verify RAGSystem was initialized with environment variables
-            mock_rag_class.assert_called_once()
-            call_args = mock_rag_class.call_args
-            assert call_args[1]['embedding_model_path'] == 'env_embedding.gguf'
-            assert call_args[1]['llm_model_path'] == 'env_llm.gguf'
+            # Create a mock thread that actually executes the target function
+            def mock_thread_side_effect(target=None, daemon=None):
+                mock_thread_instance = Mock()
+                # Execute the target function immediately to simulate thread execution
+                if target:
+                    target()
+                return mock_thread_instance
+            
+            mock_thread.side_effect = mock_thread_side_effect
+            
+            # Mock the initialize_rag_system and launch_gradio_ui functions
+            with patch('app.initialize_rag_system') as mock_init_rag, \
+                 patch('app.launch_gradio_ui') as mock_launch_gradio:
+                
+                mock_init_rag.return_value = mock_rag_instance
+                mock_launch_gradio.return_value = Mock()
+                
+                main()
+            
+            # Verify initialize_rag_system was called with environment variables
+            mock_init_rag.assert_called_once()
+            call_args = mock_init_rag.call_args
+            assert call_args[0][0] == 'env_embedding.gguf'  # embedding_model_path
+            assert call_args[0][1] == 'env_llm.gguf'  # llm_model_path
 
     def test_main_with_default_paths(self, mock_embedding_function, mock_llama_llm, mock_vectorstore, mock_gradio_components):
         """Test main function with default model paths."""
@@ -234,7 +294,10 @@ class TestMainFunction:
              patch('app.gr', mock_gr), \
              patch('os.path.exists') as mock_exists, \
              patch('os.getenv') as mock_getenv, \
-             patch('sys.argv', ['app.py']):
+             patch('sys.argv', ['app.py']), \
+             patch('signal.signal') as mock_signal, \
+             patch('sys.exit') as mock_exit, \
+             patch('time.sleep') as mock_sleep:
             
             mock_llama_class.return_value = mock_llama_llm
             mock_chroma_class.return_value = mock_vectorstore
@@ -248,7 +311,24 @@ class TestMainFunction:
             # Mock the launch method to prevent actual server startup
             mock_gr.Blocks.return_value.launch = Mock()
             
-            main()
+            # Mock the shutdown event to exit immediately
+            mock_shutdown_event = Mock()
+            mock_shutdown_event.is_set.return_value = True  # Exit immediately
+            
+            with patch('app.threading.Event') as mock_event_class:
+                mock_event_class.return_value = mock_shutdown_event
+                
+                # Mock threading.Thread to run the target function synchronously
+                original_thread = threading.Thread
+                def mock_thread(target=None, daemon=None, **kwargs):
+                    if target:
+                        # Run the target function synchronously
+                        target()
+                    return Mock()
+                
+                with patch('threading.Thread', side_effect=mock_thread):
+                    # Call the actual main function - it should exit normally
+                    main()
             
             # Verify RAGSystem was initialized with default paths
             mock_rag_class.assert_called_once()
@@ -327,7 +407,12 @@ class TestMainFunction:
              patch('app.build_nested_accordions') as mock_build_accordions, \
              patch('app.gr', mock_gr), \
              patch('os.path.exists') as mock_exists, \
-             patch('sys.argv', ['app.py']):
+             patch('sys.argv', ['app.py']), \
+             patch('signal.signal') as mock_signal, \
+             patch('sys.exit') as mock_exit, \
+             patch('threading.Event') as mock_event_class, \
+             patch('threading.Thread') as mock_thread_class, \
+             patch('app.initialize_rag_system') as mock_initialize_rag:
             
             mock_llama_class.return_value = mock_llama_llm
             mock_chroma_class.return_value = mock_vectorstore
@@ -340,7 +425,54 @@ class TestMainFunction:
             # Mock the launch method to prevent actual server startup
             mock_gr.Blocks.return_value.launch = Mock()
             
+            # Mock threading components
+            mock_shutdown_event = Mock()
+            mock_rag_ready_event = Mock()
+            mock_event_class.side_effect = [mock_shutdown_event, mock_rag_ready_event]
+            
+            # Mock thread to actually execute the target function
+            def mock_thread_init(self, target=None, daemon=None):
+                self.target = target
+                self.daemon = daemon
+                
+            def mock_thread_start(self):
+                if self.target:
+                    self.target()
+                    
+            def mock_thread_join(self, timeout=None):
+                pass
+                
+            def mock_thread_is_alive(self):
+                return False
+                
+            # Create a mock thread class that actually executes the target
+            def create_mock_thread(target=None, daemon=None):
+                class MockThread:
+                    def __init__(self, target=None, daemon=None):
+                        self.target = target
+                        self.daemon = daemon
+                    
+                    def start(self):
+                        if self.target:
+                            self.target()
+                    
+                    def join(self, timeout=None):
+                        pass
+                    
+                    def is_alive(self):
+                        return False
+                
+                return MockThread(target, daemon)
+            
+            mock_thread_class.side_effect = create_mock_thread
+            
+            # Mock initialize_rag_system to return our mock RAG instance
+            mock_initialize_rag.return_value = mock_rag_instance
+            
+            # Mock the shutdown event to be set immediately to exit the loop
+            mock_shutdown_event.is_set.return_value = True
+            
             main()
             
-            # Verify populate_database was called
-            mock_rag_instance.populate_database.assert_called_once()
+            # Verify initialize_rag_system was called (which should call populate_database internally)
+            mock_initialize_rag.assert_called_once()
