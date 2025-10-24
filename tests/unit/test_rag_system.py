@@ -366,11 +366,19 @@ class TestRAGSystem:
             assert "answer" in result
             assert "context_docs" in result
             assert "time_taken" in result
+            assert "timing_breakdown" in result
             
             assert result["question"] == "What is AI?"
             assert result["answer"] == "This is a mock response from the LLM."
             assert len(result["context_docs"]) == 1
             assert result["time_taken"] == 0.5
+            
+            # Verify timing breakdown structure
+            timing = result["timing_breakdown"]
+            assert "retrieval_time" in timing
+            assert "context_time" in timing
+            assert "generation_time" in timing
+            assert "total_time" in timing
 
     def test_clear_database(self, mock_embedding_function, mock_llama_llm, mock_vectorstore):
         """Test clear_database method."""

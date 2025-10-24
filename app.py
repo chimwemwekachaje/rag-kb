@@ -23,27 +23,32 @@ class NomicEmbeddingFunction:
         self.model_path = model_path
         self.batch_size = batch_size
         self._lock = threading.Lock()
-        # Don't initialize the embedder here - create it per-thread
+        # Thread-local storage for embedder instances
+        self._local = threading.local()
 
     def _get_embedder(self) -> Llama:
         """Get a thread-local embedder instance"""
         if not os.path.exists(self.model_path):
             raise FileNotFoundError(f"Embedding model not found at {self.model_path}")
         
-        # Create a new embedder instance for each thread to avoid threading issues
-        return Llama(
-            model_path=self.model_path,
-            embedding=True,
-            n_ctx=512,  # Smaller context for embeddings
-            n_threads=1,  # Single thread per instance
-            n_batch=128,  # Reduced batch size to prevent GGML errors
-            n_gpu_layers=0,  # Explicitly use CPU
-            use_mmap=True,  # Memory-efficient model loading
-            use_mlock=False,  # Don't lock memory pages
-            embedding_mode=True,
-            verbose=False,
-            logits_all=False,  # Reduce warnings for embedding models
-        )
+        # Check if we already have an embedder for this thread
+        if not hasattr(self._local, 'embedder'):
+            # Create a new embedder instance for this thread
+            self._local.embedder = Llama(
+                model_path=self.model_path,
+                embedding=True,
+                n_ctx=512,  # Smaller context for embeddings
+                n_threads=1,  # Single thread per instance
+                n_batch=128,  # Reduced batch size to prevent GGML errors
+                n_gpu_layers=0,  # Explicitly use CPU
+                use_mmap=True,  # Memory-efficient model loading
+                use_mlock=False,  # Don't lock memory pages
+                embedding_mode=True,
+                verbose=False,
+                logits_all=False,  # Reduce warnings for embedding models
+            )
+        
+        return self._local.embedder
 
     def _embed_single(self, text: str) -> List[float]:
         """Embed a single text with error handling"""
@@ -51,7 +56,7 @@ class NomicEmbeddingFunction:
             if not text.strip():
                 return [0.0] * 768  # Assuming 768-dimensional embeddings
 
-            # Create a new embedder instance for this thread
+            # Get the persistent embedder instance for this thread
             embedder = self._get_embedder()
             
             # Add validation for the model
@@ -59,10 +64,6 @@ class NomicEmbeddingFunction:
                 raise AttributeError("Model does not support embedding")
                 
             response = embedder.create_embedding(text.strip())
-            
-            # Clean up the embedder instance
-            if hasattr(embedder, 'close'):
-                embedder.close()
             
             return response["data"][0]["embedding"]
         except Exception as e:
@@ -87,6 +88,17 @@ class NomicEmbeddingFunction:
     def embed_query(self, text: str) -> List[float]:
         """Embed a single query"""
         return self._embed_single(text)
+    
+    def cleanup(self):
+        """Clean up thread-local embedder instances"""
+        if hasattr(self._local, 'embedder'):
+            try:
+                if hasattr(self._local.embedder, 'close'):
+                    self._local.embedder.close()
+            except Exception as e:
+                print(f"Error cleaning up embedder: {e}")
+            finally:
+                delattr(self._local, 'embedder')
 
 
 def get_embedding_function():
@@ -128,12 +140,20 @@ class RAGSystem:
         self._setup_vectorstore()
 
     def _setup_vectorstore(self):
-        """Setup or load existing vectorstore"""
+        """Setup or load existing vectorstore with HNSW indexing"""
+        # Configure collection metadata for HNSW indexing
+        collection_metadata = {
+            "hnsw:space": "cosine",
+            "hnsw:construction_ef": 200,
+            "hnsw:M": 16
+        }
+        
         if os.path.exists(self.chroma_persist_dir):
             # Load existing vectorstore
             self.vectorstore = Chroma(
                 persist_directory=self.chroma_persist_dir,
                 embedding_function=self.embedding_function,
+                collection_metadata=collection_metadata,
             )
             print(f"Loaded existing vectorstore from {self.chroma_persist_dir}")
         else:
@@ -141,6 +161,7 @@ class RAGSystem:
             self.vectorstore = Chroma(
                 persist_directory=self.chroma_persist_dir,
                 embedding_function=self.embedding_function,
+                collection_metadata=collection_metadata,
             )
             print(f"Created new vectorstore at {self.chroma_persist_dir}")
 
@@ -264,25 +285,45 @@ Context:
         return response["choices"][0]["text"].strip()
 
     def query(self, question: str, k: int = 5) -> Dict[str, Any]:
-        """Main RAG query function"""
+        """Main RAG query function with detailed timing"""
         start_time = time.time()
 
         # Retrieve relevant documents
+        retrieval_start = time.time()
         docs = self.retrieve_documents(question, k=k)
+        retrieval_time = time.time() - retrieval_start
 
         # Format context
+        context_start = time.time()
         context = "\n\n---\n\n".join([doc.page_content for doc in docs])
+        context_time = time.time() - context_start
 
         # Generate response
+        generation_start = time.time()
         response = self.generate_response(question, context)
+        generation_time = time.time() - generation_start
 
         end_time = time.time()
+        total_time = end_time - start_time
+
+        # Log performance metrics
+        print(f"Query performance breakdown:")
+        print(f"  - Document retrieval: {retrieval_time:.3f}s")
+        print(f"  - Context formatting: {context_time:.3f}s")
+        print(f"  - Response generation: {generation_time:.3f}s")
+        print(f"  - Total time: {total_time:.3f}s")
 
         return {
             "question": question,
             "answer": response,
             "context_docs": docs,
-            "time_taken": end_time - start_time,
+            "time_taken": total_time,
+            "timing_breakdown": {
+                "retrieval_time": retrieval_time,
+                "context_time": context_time,
+                "generation_time": generation_time,
+                "total_time": total_time
+            }
         }
 
     def clear_database(self):
@@ -637,8 +678,9 @@ def main():
                 # Close LLM if it has cleanup methods
                 if hasattr(rag_system.llm, 'close'):
                     rag_system.llm.close()
-                # Note: NomicEmbeddingFunction creates embedder instances on-demand
-                # and cleans them up immediately after use, so no cleanup needed here
+                # Clean up embedding function thread-local instances
+                if hasattr(rag_system.embedding_function, 'cleanup'):
+                    rag_system.embedding_function.cleanup()
             except Exception as e:
                 print(f"Error during cleanup: {e}")
         

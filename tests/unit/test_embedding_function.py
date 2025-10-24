@@ -16,6 +16,7 @@ class TestNomicEmbeddingFunction:
         assert embedding_function.model_path == "test_model.gguf"
         assert embedding_function.batch_size == 16  # default value
         assert hasattr(embedding_function, '_lock')
+        assert hasattr(embedding_function, '_local')  # Thread-local storage
         
         # Test that _get_embedder creates embedder with correct parameters
         with patch('app.Llama') as mock_llama_class:
@@ -28,8 +29,8 @@ class TestNomicEmbeddingFunction:
                 model_path="test_model.gguf",
                 embedding=True,
                 n_ctx=512,
-                n_threads=1,  # Updated to match actual implementation
-                n_batch=128,  # Updated to match actual implementation
+                n_threads=1,
+                n_batch=128,
                 n_gpu_layers=0,
                 use_mmap=True,
                 use_mlock=False,
@@ -38,6 +39,12 @@ class TestNomicEmbeddingFunction:
                 logits_all=False
             )
             assert embedder == mock_llama_embedder
+            
+            # Test that subsequent calls return the same instance (thread-local persistence)
+            embedder2 = embedding_function._get_embedder()
+            assert embedder2 == embedder
+            # Llama should only be called once due to thread-local caching
+            mock_llama_class.assert_called_once()
 
     def test_embed_documents_success(self, mock_llama_embedder):
         """Test successful embedding of multiple documents."""
@@ -206,3 +213,31 @@ class TestNomicEmbeddingFunction:
             # Should call create_embedding with stripped text
             mock_llama_embedder.create_embedding.assert_any_call("First text")
             mock_llama_embedder.create_embedding.assert_any_call("Second text")
+
+    def test_cleanup_method(self, mock_llama_embedder):
+        """Test cleanup method for thread-local embedder instances."""
+        with patch('app.Llama') as mock_llama_class:
+            mock_llama_class.return_value = mock_llama_embedder
+            
+            embedding_function = NomicEmbeddingFunction("test_model.gguf")
+            
+            # Create an embedder instance
+            embedder = embedding_function._get_embedder()
+            assert hasattr(embedding_function._local, 'embedder')
+            
+            # Test cleanup
+            embedding_function.cleanup()
+            
+            # Verify embedder was closed and removed
+            mock_llama_embedder.close.assert_called_once()
+            assert not hasattr(embedding_function._local, 'embedder')
+
+    def test_cleanup_without_embedder(self):
+        """Test cleanup method when no embedder exists."""
+        embedding_function = NomicEmbeddingFunction("test_model.gguf")
+        
+        # Should not raise an exception
+        embedding_function.cleanup()
+        
+        # Should still not have an embedder
+        assert not hasattr(embedding_function._local, 'embedder')

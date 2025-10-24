@@ -75,7 +75,15 @@ class TestRAGWorkflowIntegration:
             assert "answer" in result
             assert "context_docs" in result
             assert "time_taken" in result
+            assert "timing_breakdown" in result
             assert result["question"] == "What is machine learning?"
+            
+            # Verify timing breakdown structure
+            timing = result["timing_breakdown"]
+            assert "retrieval_time" in timing
+            assert "context_time" in timing
+            assert "generation_time" in timing
+            assert "total_time" in timing
 
     def test_document_deduplication_workflow(self, in_memory_vectorstore, mock_pdf_documents):
         """Test that documents are not duplicated when added multiple times."""
