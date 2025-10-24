@@ -3,7 +3,8 @@ title: Llama RAG Knowledge Base
 emoji: 🏆
 colorFrom: red
 colorTo: gray
-sdk: gradio
+sdk: docker
+app_port: 7860
 sdk_version: 5.49.1
 app_file: app.py
 pinned: false
