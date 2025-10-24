@@ -1,3 +1,16 @@
+---
+title: Llama RAG Knowledge Base
+emoji: 🏆
+colorFrom: red
+colorTo: gray
+sdk: gradio
+sdk_version: 5.49.1
+app_file: app.py
+pinned: false
+license: mit
+short_description: 'Ed Donner''s LLM Udemy course knowledge base '
+---
+
 # Llama RAG Knowledge Base
 
 A Retrieval-Augmented Generation (RAG) knowledge base system using Llama.cpp and GGUF models. This application combines the power of local LLMs with document retrieval to provide accurate, context-aware responses.
