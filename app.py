@@ -1,6 +1,9 @@
 import argparse
 import os
 import shutil
+import signal
+import sys
+import threading
 import time
 from typing import List, Dict, Any, Tuple
 from llama_cpp import Llama
@@ -238,6 +241,29 @@ Context:
             print(f"Cleared database at {self.chroma_persist_dir}")
 
 
+def initialize_rag_system(embedding_model_path: str, llm_model_path: str, shutdown_event: threading.Event, rag_ready_event: threading.Event) -> RAGSystem:
+    """Initialize RAG system in a separate thread"""
+    try:
+        print("Initializing RAG system...")
+        rag = RAGSystem(
+            embedding_model_path=embedding_model_path,
+            llm_model_path=llm_model_path
+        )
+        
+        if not shutdown_event.is_set():
+            print("Populating database...")
+            rag.populate_database()
+            print("RAG system initialization completed")
+            rag_ready_event.set()  # Signal that RAG is ready
+        else:
+            print("RAG system initialization cancelled due to shutdown signal")
+            
+        return rag
+    except Exception as e:
+        print(f"Error initializing RAG system: {e}")
+        return None
+
+
 def build_nested_accordions(data_path: str) -> Tuple[Dict, List]:
     """Recursively scan data/ and build nested accordion structure"""
     pdf_files = []
@@ -313,6 +339,142 @@ def create_accordion_ui(folder_structure: Dict, pdf_files: List[Tuple[str, str]]
     return accordion_ui
 
 
+def launch_gradio_ui(rag: RAGSystem, folder_structure: Dict, shutdown_event: threading.Event, rag_ready_event: threading.Event) -> gr.Blocks:
+    """Launch Gradio UI in a separate thread"""
+    try:
+        # Global variables for sources
+        sources = []
+        
+        def rag_query(query_text: str):
+            """Handle RAG query"""
+            nonlocal sources
+            
+            # Check if RAG system is ready
+            if not rag_ready_event.is_set():
+                return "RAG system is still initializing, please wait..."
+            
+            # Check if RAG system is available
+            if rag is None:
+                return "RAG system initialization failed. Please check the logs and restart the application."
+            
+            result = rag.query(query_text)
+            sources = [
+                (
+                    os.path.basename(doc.metadata.get("source", "Unknown")),
+                    doc.metadata.get("id", "Unknown")
+                )
+                for doc in result["context_docs"]
+            ]
+            
+            return result["answer"]
+        
+        def update_sources_dropdown():
+            """Update sources dropdown after query"""
+            nonlocal sources
+            return gr.update(
+                choices=sources, 
+                value=(sources[0][1] if sources and len(sources) > 0 else None)
+            )
+        
+        def load_pdf(pdf_file_name):
+            """Load PDF from chunk ID"""
+            parts = pdf_file_name.split(":")
+            filename = parts[0]
+            page = parts[1] if len(parts) > 1 else "1"
+            return filename, int(page)
+        
+        def load_pdf_and_page(pdf_file, page_num):
+            """Load PDF file and page"""
+            if pdf_file is None:
+                return None, None
+            return pdf_file, int(page_num)
+        
+        def change_start_page(page_num):
+            """Change PDF starting page"""
+            return PDF(starting_page=page_num)
+        
+        # Create Gradio interface
+        with gr.Blocks(fill_width=True, title="Llama RAG Knowledge Base") as view:
+            pdf_input = gr.File(label="Upload PDF", visible=False)
+            page_number = gr.Number(
+                value=1, label="Page Number", precision=0, visible=False
+            )
+            
+            with gr.Row():
+                with gr.Column(scale=1):
+                    # Nested Accordions for hierarchical navigation
+                    with gr.Accordion("Course Contents", open=True):
+                        def create_nested_accordions(structure, level=0):
+                            """Recursively create nested accordions"""
+                            for name, content in structure.items():
+                                if isinstance(content, dict):
+                                    # It's a folder
+                                    with gr.Accordion(f"📁 {name}", open=False):
+                                        create_nested_accordions(content, level + 1)
+                                else:
+                                    # It's a PDF file
+                                    gr.Button(
+                                        f"📄 {name}",
+                                        size="sm"
+                                    ).click(
+                                        fn=lambda path=content: load_pdf_and_page(path, 1),
+                                        outputs=[pdf_input, page_number]
+                                    )
+                        
+                        create_nested_accordions(folder_structure)
+                    
+                    query_input = gr.TextArea(
+                        label="Question",
+                        value="What is the key subject of these documents?",
+                        lines=3
+                    )
+                    query_button = gr.Button("Search", variant="primary")
+                    query_output = gr.TextArea(label="Response", lines=8)
+                    sources_input = gr.Dropdown(label="Sources", choices=[])
+                
+                with gr.Column(scale=2):
+                    pdf_display = PDF(label="PDF Viewer", scale=1, interactive=False)
+            
+            # Event handlers
+            pdf_display.allow_file_upload = False
+            query_button.click(rag_query, inputs=query_input, outputs=query_output)
+            query_output.change(fn=update_sources_dropdown, outputs=sources_input)
+            sources_input.change(
+                load_pdf, inputs=sources_input, outputs=[pdf_input, page_number]
+            )
+            
+            page_number.submit(
+                fn=load_pdf_and_page,
+                inputs=[pdf_input, page_number],
+                outputs=[pdf_display],
+            )
+            
+            pdf_input.change(
+                fn=load_pdf_and_page,
+                inputs=[pdf_input, page_number],
+                outputs=[pdf_display, page_number],
+            )
+            
+            page_number.change(
+                fn=change_start_page, inputs=page_number, outputs=pdf_display
+            )
+        
+        view.title = "Llama RAG Knowledge Base"
+        view.description = "Tool for querying content from loaded documents using Llama.cpp and GGUF models"
+        view.flagging_mode = "never"
+        
+        if not shutdown_event.is_set():
+            print("Starting Gradio server...")
+            view.launch(prevent_thread_lock=True)
+        else:
+            print("Gradio server launch cancelled due to shutdown signal")
+            
+        return view
+    except Exception as e:
+        print(f"Error launching Gradio UI: {e}")
+        return None
+
+
 def main():
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="Llama RAG Knowledge Base")
@@ -343,139 +505,94 @@ def main():
         print(f"Error: LLM model not found at {llm_model_path}")
         return
     
-    # Initialize RAG system
-    print("Initializing RAG system...")
-    rag = RAGSystem(
-        embedding_model_path=embedding_model_path,
-        llm_model_path=llm_model_path
-    )
-    
-    # Handle reset flag
+    # Handle reset flag early
     if args.reset:
         print("✨ Clearing Database")
+        rag = RAGSystem(
+            embedding_model_path=embedding_model_path,
+            llm_model_path=llm_model_path
+        )
         rag.clear_database()
         return
     
-    # Populate database if needed
-    rag.populate_database()
+    # Create shutdown event for coordination
+    shutdown_event = threading.Event()
+    rag_ready_event = threading.Event()
+    
+    # Global variables for threads and resources
+    rag_system = None
+    gradio_view = None
+    rag_thread = None
+    gradio_thread = None
+    
+    def signal_handler(signum, frame):
+        """Handle SIGTERM and SIGINT signals"""
+        print(f"\nReceived signal {signum}. Initiating graceful shutdown...")
+        shutdown_event.set()
+        
+        # Close Gradio server if it exists
+        if gradio_view is not None:
+            try:
+                print("Closing Gradio server...")
+                gradio_view.close()
+            except Exception as e:
+                print(f"Error closing Gradio server: {e}")
+        
+        # Wait for threads to finish (with timeout)
+        if rag_thread and rag_thread.is_alive():
+            print("Waiting for RAG initialization to complete...")
+            rag_thread.join(timeout=5)
+        
+        if gradio_thread and gradio_thread.is_alive():
+            print("Waiting for Gradio server to shutdown...")
+            gradio_thread.join(timeout=5)
+        
+        # Cleanup RAG system resources if needed
+        if rag_system is not None:
+            try:
+                # Close LLM and embedding models if they have cleanup methods
+                if hasattr(rag_system.llm, 'close'):
+                    rag_system.llm.close()
+                if hasattr(rag_system.embedding_function.embedder, 'close'):
+                    rag_system.embedding_function.embedder.close()
+            except Exception as e:
+                print(f"Error during cleanup: {e}")
+        
+        print("Graceful shutdown completed")
+        sys.exit(0)
+    
+    # Register signal handlers
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
     
     # Build folder structure for navigation
     folder_structure, pdf_files = build_nested_accordions("data")
     
-    # Global variables for sources
-    sources = []
+    # Start RAG initialization in a separate thread
+    def rag_init_wrapper():
+        nonlocal rag_system
+        rag_system = initialize_rag_system(embedding_model_path, llm_model_path, shutdown_event, rag_ready_event)
     
-    def rag_query(query_text: str):
-        """Handle RAG query"""
-        global sources
-        
-        result = rag.query(query_text)
-        sources = [
-            (
-                os.path.basename(doc.metadata.get("source", "Unknown")),
-                doc.metadata.get("id", "Unknown")
-            )
-            for doc in result["context_docs"]
-        ]
-        
-        return result["answer"]
+    rag_thread = threading.Thread(target=rag_init_wrapper, daemon=True)
+    rag_thread.start()
     
-    def update_sources_dropdown():
-        """Update sources dropdown after query"""
-        global sources
-        return gr.update(
-            choices=sources, 
-            value=(sources[0][1] if sources and len(sources) > 0 else None)
-        )
+    # Start Gradio server in a separate thread immediately (don't wait for RAG init)
+    def gradio_wrapper():
+        nonlocal gradio_view
+        gradio_view = launch_gradio_ui(rag_system, folder_structure, shutdown_event, rag_ready_event)
     
-    def load_pdf(pdf_file_name):
-        """Load PDF from chunk ID"""
-        parts = pdf_file_name.split(":")
-        filename = parts[0]
-        page = parts[1] if len(parts) > 1 else "1"
-        return filename, int(page)
+    gradio_thread = threading.Thread(target=gradio_wrapper, daemon=True)
+    gradio_thread.start()
     
-    def load_pdf_and_page(pdf_file, page_num):
-        """Load PDF file and page"""
-        if pdf_file is None:
-            return None, None
-        return pdf_file, int(page_num)
+    print("Both RAG initialization and Gradio server are starting...")
     
-    def change_start_page(page_num):
-        """Change PDF starting page"""
-        return PDF(starting_page=page_num)
-    
-    # Create Gradio interface
-    with gr.Blocks(fill_width=True, title="Llama RAG Knowledge Base") as view:
-        pdf_input = gr.File(label="Upload PDF", visible=False)
-        page_number = gr.Number(
-            value=1, label="Page Number", precision=0, visible=False
-        )
-        
-        with gr.Row():
-            with gr.Column(scale=1):
-                # Nested Accordions for hierarchical navigation
-                with gr.Accordion("Course Contents", open=True):
-                    def create_nested_accordions(structure, level=0):
-                        """Recursively create nested accordions"""
-                        for name, content in structure.items():
-                            if isinstance(content, dict):
-                                # It's a folder
-                                with gr.Accordion(f"📁 {name}", open=False):
-                                    create_nested_accordions(content, level + 1)
-                            else:
-                                # It's a PDF file
-                                gr.Button(
-                                    f"📄 {name}",
-                                    size="sm"
-                                ).click(
-                                    fn=lambda path=content: load_pdf_and_page(path, 1),
-                                    outputs=[pdf_input, page_number]
-                                )
-                    
-                    create_nested_accordions(folder_structure)
-                
-                query_input = gr.TextArea(
-                    label="Question",
-                    value="What is the key subject of these documents?",
-                    lines=3
-                )
-                query_button = gr.Button("Search", variant="primary")
-                query_output = gr.TextArea(label="Response", lines=8)
-                sources_input = gr.Dropdown(label="Sources", choices=[])
-            
-            with gr.Column(scale=2):
-                pdf_display = PDF(label="PDF Viewer", scale=1, interactive=False)
-        
-        # Event handlers
-        pdf_display.allow_file_upload = False
-        query_button.click(rag_query, inputs=query_input, outputs=query_output)
-        query_output.change(fn=update_sources_dropdown, outputs=sources_input)
-        sources_input.change(
-            load_pdf, inputs=sources_input, outputs=[pdf_input, page_number]
-        )
-        
-        page_number.submit(
-            fn=load_pdf_and_page,
-            inputs=[pdf_input, page_number],
-            outputs=[pdf_display],
-        )
-        
-        pdf_input.change(
-            fn=load_pdf_and_page,
-            inputs=[pdf_input, page_number],
-            outputs=[pdf_display, page_number],
-        )
-        
-        page_number.change(
-            fn=change_start_page, inputs=page_number, outputs=pdf_display
-        )
-    
-    view.title = "Llama RAG Knowledge Base"
-    view.description = "Tool for querying content from loaded documents using Llama.cpp and GGUF models"
-    view.flagging_mode = "never"
-    
-    view.launch()
+    # Keep main thread alive and wait for shutdown signal
+    try:
+        while not shutdown_event.is_set():
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        # This should be handled by the signal handler, but just in case
+        signal_handler(signal.SIGINT, None)
 
 
 if __name__ == "__main__":
