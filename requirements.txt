@@ -6,3 +6,7 @@ langchain-community
 gradio
 gradio-pdf
 pypdf>=6.1.3
+pytest>=8.0.0
+pytest-cov>=4.1.0
+pytest-mock>=3.12.0
+coverage[toml]>=7.4.0
