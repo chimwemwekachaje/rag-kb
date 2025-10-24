@@ -4,11 +4,7 @@ import shutil
 import time
 from typing import List, Dict, Any, Tuple
 from llama_cpp import Llama
-# Try different import paths for Chroma
-try:
-    from langchain_chroma import Chroma
-except ImportError:
-    from langchain.vectorstores import Chroma
+from langchain_chroma import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 from langchain_community.document_loaders.pdf import PyPDFDirectoryLoader
