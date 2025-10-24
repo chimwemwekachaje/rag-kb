@@ -56,9 +56,15 @@ class TestRAGSystem:
             )
             
             # Verify Chroma was called with persist_directory
+            expected_collection_metadata = {
+                "hnsw:space": "cosine",
+                "hnsw:construction_ef": 200,
+                "hnsw:M": 16
+            }
             mock_chroma_class.assert_called_once_with(
                 persist_directory="./test_chroma",
-                embedding_function=mock_embedding_function
+                embedding_function=mock_embedding_function,
+                collection_metadata=expected_collection_metadata
             )
 
     def test_setup_vectorstore_new_directory(self, mock_embedding_function, mock_llama_llm):
@@ -80,9 +86,15 @@ class TestRAGSystem:
             )
             
             # Verify Chroma was called with persist_directory
+            expected_collection_metadata = {
+                "hnsw:space": "cosine",
+                "hnsw:construction_ef": 200,
+                "hnsw:M": 16
+            }
             mock_chroma_class.assert_called_once_with(
                 persist_directory="./test_chroma",
-                embedding_function=mock_embedding_function
+                embedding_function=mock_embedding_function,
+                collection_metadata=expected_collection_metadata
             )
 
     def test_calculate_chunk_ids(self, mock_embedding_function, mock_llama_llm, mock_vectorstore):
@@ -342,11 +354,15 @@ class TestRAGSystem:
         """Test complete query flow."""
         with patch('app.Llama') as mock_llama_class, \
              patch('app.Chroma') as mock_chroma_class, \
-             patch('app.get_embedding_function') as mock_get_embedding:
+             patch('app.get_embedding_function') as mock_get_embedding, \
+             patch('app.time') as mock_app_time:
             
             mock_llama_class.return_value = mock_llama_llm
             mock_chroma_class.return_value = mock_vectorstore
             mock_get_embedding.return_value = mock_embedding_function
+            
+            # Set up time mock to return values for the 8 time.time() calls in query method
+            mock_app_time.time.side_effect = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
             
             # Mock similarity search results
             mock_docs = [
@@ -371,7 +387,7 @@ class TestRAGSystem:
             assert result["question"] == "What is AI?"
             assert result["answer"] == "This is a mock response from the LLM."
             assert len(result["context_docs"]) == 1
-            assert result["time_taken"] == 0.5
+            assert result["time_taken"] == 0.7
             
             # Verify timing breakdown structure
             timing = result["timing_breakdown"]

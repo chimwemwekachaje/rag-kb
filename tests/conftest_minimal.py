@@ -232,5 +232,6 @@ def mock_shutil_rmtree():
 def mock_time():
     """Mock time.time for consistent timing in tests."""
     with patch('time.time') as mock_time_func:
-        mock_time_func.side_effect = [0.0, 0.5]  # start_time, end_time
+        # Provide enough time values for the query method (6 calls)
+        mock_time_func.side_effect = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]  # start_time, retrieval_start, retrieval_end, context_start, generation_start, end_time
         yield mock_time_func
