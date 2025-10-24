@@ -1,24 +1,17 @@
-# Use Python 3.12 slim image as base
-FROM python:3.12-slim
+FROM abetlen/llama-cpp-python:latest
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV GRADIO_SERVER_NAME=0.0.0.0
 ENV GRADIO_SERVER_PORT=7860
 
-# Install system dependencies (minimal set)
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-# Set working directory
 WORKDIR /app
 
-# Copy requirements first for better Docker layer caching
+# Copy requirements and install additional dependencies
 COPY requirements.txt .
-
-# Install Python dependencies using pre-built wheels
-RUN pip install --no-cache-dir --only-binary=all -r requirements.txt
+RUN pip install --no-cache-dir langchain-chroma langchain-text-splitters \
+    langchain-core langchain-community gradio gradio-pdf pypdf>=6.1.3 \
+    pytest>=8.0.0 pytest-cov>=4.1.0 pytest-mock>=3.12.0 coverage[toml]>=7.4.0
 
 # Copy application files
 COPY app.py .
