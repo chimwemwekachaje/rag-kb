@@ -31,11 +31,11 @@ jobs:
         
     - name: Clone and sync to HuggingFace Space
       run: |
-        git clone https://${{ secrets.HF_TOKEN }}@huggingface.co/spaces/kachaje/llm-kb temp-space
+        git clone https://${{ secrets.HF_USER }}:${{ secrets.HF_TOKEN }}@huggingface.co/spaces/kachaje/llm-kb temp-space
         rsync -av --exclude=temp-space . temp-space/
         cd temp-space
         # Set the correct remote URL for HuggingFace
-        git remote set-url origin https://${{ secrets.HF_TOKEN }}@huggingface.co/spaces/kachaje/llm-kb
+        git remote set-url origin https://${{ secrets.HF_USER }}:${{ secrets.HF_TOKEN }}@huggingface.co/spaces/kachaje/llm-kb
         git add .
         git commit -m "Sync from GitHub - $(date)" || true
         git push origin main
