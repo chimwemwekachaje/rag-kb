@@ -3,6 +3,7 @@ langchain-chroma
 langchain-text-splitters
 langchain-core
 langchain-community
+langchain-huggingface
 gradio
 gradio-pdf
 pypdf>=6.1.3

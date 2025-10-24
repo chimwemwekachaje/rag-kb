@@ -13,6 +13,7 @@ from langchain_core.documents import Document
 from langchain_community.document_loaders.pdf import PyPDFDirectoryLoader
 import gradio as gr
 from gradio_pdf import PDF
+from langchain_huggingface import HuggingFaceEmbeddings
 
 
 class NomicEmbeddingFunction:
@@ -26,13 +27,16 @@ class NomicEmbeddingFunction:
 
     def _get_embedder(self) -> Llama:
         """Get a thread-local embedder instance"""
+        if not os.path.exists(self.model_path):
+            raise FileNotFoundError(f"Embedding model not found at {self.model_path}")
+        
         # Create a new embedder instance for each thread to avoid threading issues
         return Llama(
             model_path=self.model_path,
             embedding=True,
             n_ctx=512,  # Smaller context for embeddings
             n_threads=1,  # Single thread per instance
-            n_batch=512,  # Optimize batch processing
+            n_batch=128,  # Reduced batch size to prevent GGML errors
             n_gpu_layers=0,  # Explicitly use CPU
             use_mmap=True,  # Memory-efficient model loading
             use_mlock=False,  # Don't lock memory pages
@@ -49,6 +53,11 @@ class NomicEmbeddingFunction:
 
             # Create a new embedder instance for this thread
             embedder = self._get_embedder()
+            
+            # Add validation for the model
+            if not hasattr(embedder, 'create_embedding'):
+                raise AttributeError("Model does not support embedding")
+                
             response = embedder.create_embedding(text.strip())
             
             # Clean up the embedder instance
@@ -58,6 +67,7 @@ class NomicEmbeddingFunction:
             return response["data"][0]["embedding"]
         except Exception as e:
             print(f"Error embedding text: {e}")
+            print(f"Text length: {len(text)}")
             return [0.0] * 768
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
@@ -79,6 +89,19 @@ class NomicEmbeddingFunction:
         return self._embed_single(text)
 
 
+def get_embedding_function():
+    """Get embedding function with HuggingFace fallback for Spaces"""
+    if os.getenv("HF_TOKEN"):
+        print("Using HuggingFace embeddings (HF_TOKEN detected)")
+        return HuggingFaceEmbeddings(
+            model_name="sentence-transformers/all-MiniLM-L6-v2"
+        )
+    else:
+        print("Using local GGUF embeddings")
+        embedding_model_path = os.getenv("EMBEDDING_MODEL_PATH") or "models/nomic-embed-text-v1.5.Q4_K_M.gguf"
+        return NomicEmbeddingFunction(embedding_model_path)
+
+
 class RAGSystem:
     def __init__(
         self,
@@ -93,7 +116,7 @@ class RAGSystem:
         self.data_path = data_path
 
         # Initialize embedding function
-        self.embedding_function = NomicEmbeddingFunction(embedding_model_path)
+        self.embedding_function = get_embedding_function()
 
         # Initialize LLM
         self.llm = Llama(
