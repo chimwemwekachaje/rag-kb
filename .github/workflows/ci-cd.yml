@@ -63,6 +63,8 @@ jobs:
       contents: read
       packages: write
       id-token: write
+      attestations: write
+      packages: write
       
     steps:
     - name: Checkout code
