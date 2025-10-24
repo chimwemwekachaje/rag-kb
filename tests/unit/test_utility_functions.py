@@ -110,7 +110,9 @@ class TestCreateAccordionUI:
         mock_gr, mock_pdf = mock_gradio_components
         pdf_files = [("Course Summary.pdf", "data/Course Summary.pdf")]
         
-        result = create_accordion_ui(sample_folder_structure, pdf_files)
+        # Patch the gr module in the app module
+        with patch('app.gr', mock_gr):
+            result = create_accordion_ui(sample_folder_structure, pdf_files)
         
         # Verify gr.Blocks was called
         mock_gr.Blocks.assert_called_once()
@@ -126,7 +128,9 @@ class TestCreateAccordionUI:
             ("Week 2 Day 1.pdf", "data/Week 2/Week 2 Day 1.pdf")
         ]
         
-        result = create_accordion_ui(sample_folder_structure, pdf_files)
+        # Patch the gr module in the app module
+        with patch('app.gr', mock_gr):
+            result = create_accordion_ui(sample_folder_structure, pdf_files)
         
         # Verify multiple accordions were created (nested structure)
         assert mock_gr.Accordion.call_count >= 2  # At least main accordion and sub-accordions
@@ -137,7 +141,9 @@ class TestCreateAccordionUI:
         empty_structure = {}
         empty_pdf_files = []
         
-        result = create_accordion_ui(empty_structure, empty_pdf_files)
+        # Patch the gr module in the app module
+        with patch('app.gr', mock_gr):
+            result = create_accordion_ui(empty_structure, empty_pdf_files)
         
         # Should still create the main structure
         mock_gr.Blocks.assert_called_once()
@@ -147,14 +153,16 @@ class TestCreateAccordionUI:
 class TestMainFunction:
     """Test cases for main function."""
 
-    def test_main_with_cli_arguments(self, mock_embedding_function, mock_llama_llm, mock_vectorstore):
+    def test_main_with_cli_arguments(self, mock_embedding_function, mock_llama_llm, mock_vectorstore, mock_gradio_components):
         """Test main function with CLI arguments."""
+        mock_gr, mock_pdf = mock_gradio_components
+        
         with patch('app.Llama') as mock_llama_class, \
              patch('app.Chroma') as mock_chroma_class, \
              patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
              patch('app.RAGSystem') as mock_rag_class, \
              patch('app.build_nested_accordions') as mock_build_accordions, \
-             patch('app.gr.Blocks') as mock_blocks, \
+             patch('app.gr', mock_gr), \
              patch('os.path.exists') as mock_exists, \
              patch('sys.argv', ['app.py', '--embedding-model', 'test_embedding.gguf', '--llm-model', 'test_llm.gguf']):
             
@@ -167,7 +175,7 @@ class TestMainFunction:
             mock_exists.return_value = True
             
             # Mock the launch method to prevent actual server startup
-            mock_blocks.return_value.launch = Mock()
+            mock_gr.Blocks.return_value.launch = Mock()
             
             main()
             
@@ -177,14 +185,16 @@ class TestMainFunction:
             assert call_args[1]['embedding_model_path'] == 'test_embedding.gguf'
             assert call_args[1]['llm_model_path'] == 'test_llm.gguf'
 
-    def test_main_with_environment_variables(self, mock_embedding_function, mock_llama_llm, mock_vectorstore):
+    def test_main_with_environment_variables(self, mock_embedding_function, mock_llama_llm, mock_vectorstore, mock_gradio_components):
         """Test main function with environment variables."""
+        mock_gr, mock_pdf = mock_gradio_components
+        
         with patch('app.Llama') as mock_llama_class, \
              patch('app.Chroma') as mock_chroma_class, \
              patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
              patch('app.RAGSystem') as mock_rag_class, \
              patch('app.build_nested_accordions') as mock_build_accordions, \
-             patch('app.gr.Blocks') as mock_blocks, \
+             patch('app.gr', mock_gr), \
              patch('os.path.exists') as mock_exists, \
              patch('os.getenv') as mock_getenv, \
              patch('sys.argv', ['app.py']):
@@ -202,7 +212,7 @@ class TestMainFunction:
             }.get(key)
             
             # Mock the launch method to prevent actual server startup
-            mock_blocks.return_value.launch = Mock()
+            mock_gr.Blocks.return_value.launch = Mock()
             
             main()
             
@@ -212,14 +222,16 @@ class TestMainFunction:
             assert call_args[1]['embedding_model_path'] == 'env_embedding.gguf'
             assert call_args[1]['llm_model_path'] == 'env_llm.gguf'
 
-    def test_main_with_default_paths(self, mock_embedding_function, mock_llama_llm, mock_vectorstore):
+    def test_main_with_default_paths(self, mock_embedding_function, mock_llama_llm, mock_vectorstore, mock_gradio_components):
         """Test main function with default model paths."""
+        mock_gr, mock_pdf = mock_gradio_components
+        
         with patch('app.Llama') as mock_llama_class, \
              patch('app.Chroma') as mock_chroma_class, \
              patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
              patch('app.RAGSystem') as mock_rag_class, \
              patch('app.build_nested_accordions') as mock_build_accordions, \
-             patch('app.gr.Blocks') as mock_blocks, \
+             patch('app.gr', mock_gr), \
              patch('os.path.exists') as mock_exists, \
              patch('os.getenv') as mock_getenv, \
              patch('sys.argv', ['app.py']):
@@ -234,7 +246,7 @@ class TestMainFunction:
             mock_getenv.return_value = None  # No environment variables
             
             # Mock the launch method to prevent actual server startup
-            mock_blocks.return_value.launch = Mock()
+            mock_gr.Blocks.return_value.launch = Mock()
             
             main()
             
@@ -251,7 +263,7 @@ class TestMainFunction:
             
             # Mock embedding model doesn't exist
             def mock_exists_side_effect(path):
-                if 'embedding' in path:
+                if 'embed' in path:
                     return False
                 return True
             
@@ -276,12 +288,15 @@ class TestMainFunction:
             # Should return early without initializing RAG system
             main()
 
-    def test_main_with_reset_flag(self, mock_embedding_function, mock_llama_llm, mock_vectorstore):
+    def test_main_with_reset_flag(self, mock_embedding_function, mock_llama_llm, mock_vectorstore, mock_gradio_components):
         """Test main function with reset flag."""
+        mock_gr, mock_pdf = mock_gradio_components
+        
         with patch('app.Llama') as mock_llama_class, \
              patch('app.Chroma') as mock_chroma_class, \
              patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
              patch('app.RAGSystem') as mock_rag_class, \
+             patch('app.gr', mock_gr), \
              patch('os.path.exists') as mock_exists, \
              patch('sys.argv', ['app.py', '--reset']):
             
@@ -292,20 +307,25 @@ class TestMainFunction:
             mock_rag_class.return_value = mock_rag_instance
             mock_exists.return_value = True
             
+            # Mock the launch method to prevent actual server startup
+            mock_gr.Blocks.return_value.launch = Mock()
+            
             main()
             
             # Verify RAGSystem was initialized and clear_database was called
             mock_rag_class.assert_called_once()
             mock_rag_instance.clear_database.assert_called_once()
 
-    def test_main_populate_database_called(self, mock_embedding_function, mock_llama_llm, mock_vectorstore):
+    def test_main_populate_database_called(self, mock_embedding_function, mock_llama_llm, mock_vectorstore, mock_gradio_components):
         """Test that populate_database is called in main."""
+        mock_gr, mock_pdf = mock_gradio_components
+        
         with patch('app.Llama') as mock_llama_class, \
              patch('app.Chroma') as mock_chroma_class, \
              patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
              patch('app.RAGSystem') as mock_rag_class, \
              patch('app.build_nested_accordions') as mock_build_accordions, \
-             patch('app.gr.Blocks') as mock_blocks, \
+             patch('app.gr', mock_gr), \
              patch('os.path.exists') as mock_exists, \
              patch('sys.argv', ['app.py']):
             
@@ -318,7 +338,7 @@ class TestMainFunction:
             mock_exists.return_value = True
             
             # Mock the launch method to prevent actual server startup
-            mock_blocks.return_value.launch = Mock()
+            mock_gr.Blocks.return_value.launch = Mock()
             
             main()
             

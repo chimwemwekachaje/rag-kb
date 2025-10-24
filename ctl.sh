@@ -113,7 +113,7 @@ run_tests(){
     if [ -d ".venv" ]; then
         source .venv/bin/activate
     fi
-    python -m pytest tests/ -x -v --cov=app --cov-report=html --cov-report=term-missing
+    python -m pytest tests/ -x -s -v --cov=app --cov-report=html --cov-report=term-missing
     print_success "Tests completed"
 }
 
