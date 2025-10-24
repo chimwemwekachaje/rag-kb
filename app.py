@@ -6,6 +6,7 @@ import sys
 import threading
 import time
 from typing import List, Dict, Any, Tuple
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from llama_cpp import Llama
 from langchain_chroma import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -18,50 +19,59 @@ from gradio_pdf import PDF
 class NomicEmbeddingFunction:
     """Custom embedding function using nomic-embed-text.gguf"""
 
-    def __init__(self, model_path: str):
+    def __init__(self, model_path: str, batch_size: int = 16):
+        self.batch_size = batch_size
         self.embedder = Llama(
             model_path=model_path,
             embedding=True,
             n_ctx=512,  # Smaller context for embeddings
-            n_threads=4,
+            n_threads=3,  # Reduced for better memory efficiency
+            n_batch=512,  # Optimize batch processing
+            n_gpu_layers=0,  # Explicitly use CPU
+            use_mmap=True,  # Memory-efficient model loading
+            use_mlock=False,  # Don't lock memory pages
             embedding_mode=True,
             verbose=False,
             logits_all=False,  # Reduce warnings for embedding models
         )
 
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        """Embed a list of documents"""
-        embeddings = []
-        for text in texts:
-            try:
-                # Ensure text is properly formatted
-                if not text.strip():
-                    # Handle empty text
-                    embeddings.append(
-                        [0.0] * 768
-                    )  # Assuming 768-dimensional embeddings
-                    continue
-
-                response = self.embedder.create_embedding(text.strip())
-                embedding = response["data"][0]["embedding"]
-                embeddings.append(embedding)
-            except Exception as e:
-                print(f"Error embedding text: {e}")
-                # Fallback to zero vector
-                embeddings.append([0.0] * 768)
-        return embeddings
-
-    def embed_query(self, text: str) -> List[float]:
-        """Embed a single query"""
+    def _embed_single(self, text: str) -> List[float]:
+        """Embed a single text with error handling"""
         try:
             if not text.strip():
-                return [0.0] * 768
+                return [0.0] * 768  # Assuming 768-dimensional embeddings
 
             response = self.embedder.create_embedding(text.strip())
             return response["data"][0]["embedding"]
         except Exception as e:
-            print(f"Error embedding query: {e}")
+            print(f"Error embedding text: {e}")
             return [0.0] * 768
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        """Embed a list of documents using parallel processing"""
+        if not texts:
+            return []
+        
+        embeddings = [None] * len(texts)
+        
+        # Use ThreadPoolExecutor for parallel processing
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            # Submit all embedding tasks
+            futures = {}
+            for idx, text in enumerate(texts):
+                future = executor.submit(self._embed_single, text)
+                futures[future] = idx
+            
+            # Collect results as they complete
+            for future in as_completed(futures):
+                idx = futures[future]
+                embeddings[idx] = future.result()
+        
+        return embeddings
+
+    def embed_query(self, text: str) -> List[float]:
+        """Embed a single query"""
+        return self._embed_single(text)
 
 
 class RAGSystem:

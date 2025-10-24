@@ -20,7 +20,11 @@ class TestNomicEmbeddingFunction:
                 model_path="test_model.gguf",
                 embedding=True,
                 n_ctx=512,
-                n_threads=4,
+                n_threads=3,
+                n_batch=512,
+                n_gpu_layers=0,
+                use_mmap=True,
+                use_mlock=False,
                 embedding_mode=True,
                 verbose=False,
                 logits_all=False
