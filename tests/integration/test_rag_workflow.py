@@ -12,7 +12,15 @@ class TestRAGWorkflowIntegration:
     def test_full_rag_workflow(self, in_memory_vectorstore, mock_pdf_documents):
         """Test complete RAG workflow from document loading to response generation."""
         with patch('app.Llama') as mock_llama_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class:
+             patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
+             patch('app.get_embedding_function') as mock_get_embedding:
+            
+            # Setup mock embedding function
+            mock_embedding_func = Mock()
+            mock_embedding_func.embed_query.return_value = [0.1] * 768
+            mock_embedding_func.embed_documents.return_value = [[0.1] * 768] * 4
+            
+            mock_get_embedding.return_value = mock_embedding_func
             
             # Setup mock Llama models
             mock_embedder = Mock()
@@ -37,7 +45,6 @@ class TestRAGWorkflowIntegration:
             
             # Replace vectorstore with in-memory version
             rag.vectorstore = in_memory_vectorstore
-            rag.embedding_function.embedder = mock_embedder
             rag.llm = mock_llm
             
             # Test document processing workflow
@@ -73,7 +80,15 @@ class TestRAGWorkflowIntegration:
     def test_document_deduplication_workflow(self, in_memory_vectorstore, mock_pdf_documents):
         """Test that documents are not duplicated when added multiple times."""
         with patch('app.Llama') as mock_llama_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class:
+             patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
+             patch('app.get_embedding_function') as mock_get_embedding:
+            
+            # Setup mock embedding function
+            mock_embedding_func = Mock()
+            mock_embedding_func.embed_query.return_value = [0.1] * 768
+            mock_embedding_func.embed_documents.return_value = [[0.1] * 768] * 4
+            
+            mock_get_embedding.return_value = mock_embedding_func
             
             # Setup mock models
             mock_embedder = Mock()
@@ -90,7 +105,6 @@ class TestRAGWorkflowIntegration:
                 llm_model_path="test_llm.gguf"
             )
             rag.vectorstore = in_memory_vectorstore
-            rag.embedding_function.embedder = mock_embedder
             
             # Add documents first time
             rag.add_documents(mock_pdf_documents)
@@ -146,7 +160,8 @@ class TestRAGWorkflowIntegration:
             
             # Create embedding function
             embedding_function = NomicEmbeddingFunction("test_model.gguf")
-            embedding_function.embedder = mock_embedder
+            # Mock the _get_embedder method to return our mock
+            embedding_function._get_embedder = lambda: mock_embedder
             
             # Test consistency
             text = "This is a test document about artificial intelligence."
@@ -159,7 +174,15 @@ class TestRAGWorkflowIntegration:
     def test_retrieval_ranking(self, in_memory_vectorstore, mock_pdf_documents):
         """Test that document retrieval returns results in relevance order."""
         with patch('app.Llama') as mock_llama_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class:
+             patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
+             patch('app.get_embedding_function') as mock_get_embedding:
+            
+            # Setup mock embedding function
+            mock_embedding_func = Mock()
+            mock_embedding_func.embed_query.return_value = [0.1] * 768
+            mock_embedding_func.embed_documents.return_value = [[0.1] * 768] * 4
+            
+            mock_get_embedding.return_value = mock_embedding_func
             
             # Setup mock models
             mock_embedder = Mock()
@@ -176,7 +199,6 @@ class TestRAGWorkflowIntegration:
                 llm_model_path="test_llm.gguf"
             )
             rag.vectorstore = in_memory_vectorstore
-            rag.embedding_function.embedder = mock_embedder
             
             # Add documents
             rag.add_documents(mock_pdf_documents)
@@ -215,7 +237,15 @@ class TestRAGWorkflowIntegration:
 
     def test_error_handling_in_workflow(self, in_memory_vectorstore):
         """Test error handling throughout the workflow."""
-        with patch('app.Llama') as mock_llama_class:
+        with patch('app.Llama') as mock_llama_class, \
+             patch('app.get_embedding_function') as mock_get_embedding:
+            
+            # Setup mock embedding function that returns zero vector on error
+            mock_embedding_func = Mock()
+            mock_embedding_func.embed_query.return_value = [0.0] * 768
+            mock_embedding_func.embed_documents.return_value = [[0.0] * 768] * 4
+            
+            mock_get_embedding.return_value = mock_embedding_func
             
             # Setup mock models that can raise errors
             mock_embedder = Mock()
@@ -232,7 +262,6 @@ class TestRAGWorkflowIntegration:
                 llm_model_path="test_llm.gguf"
             )
             rag.vectorstore = in_memory_vectorstore
-            rag.embedding_function.embedder = mock_embedder
             rag.llm = mock_llm
             
             # Test that errors are handled gracefully
@@ -268,7 +297,15 @@ class TestRAGWorkflowIntegration:
     def test_workflow_with_single_document(self, in_memory_vectorstore):
         """Test workflow with single document."""
         with patch('app.Llama') as mock_llama_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class:
+             patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
+             patch('app.get_embedding_function') as mock_get_embedding:
+            
+            # Setup mock embedding function
+            mock_embedding_func = Mock()
+            mock_embedding_func.embed_query.return_value = [0.1] * 768
+            mock_embedding_func.embed_documents.return_value = [[0.1] * 768]
+            
+            mock_get_embedding.return_value = mock_embedding_func
             
             # Setup mock models
             mock_embedder = Mock()
@@ -290,7 +327,6 @@ class TestRAGWorkflowIntegration:
                 llm_model_path="test_llm.gguf"
             )
             rag.vectorstore = in_memory_vectorstore
-            rag.embedding_function.embedder = mock_embedder
             rag.llm = mock_llm
             
             # Single document

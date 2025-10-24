@@ -15,11 +15,11 @@ class TestRAGSystem:
         """Test successful initialization of RAGSystem."""
         with patch('app.Llama') as mock_llama_class, \
              patch('app.Chroma') as mock_chroma_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class:
+             patch('app.get_embedding_function') as mock_get_embedding:
             
             mock_llama_class.return_value = mock_llama_llm
             mock_chroma_class.return_value = mock_vectorstore
-            mock_embedding_class.return_value = mock_embedding_function
+            mock_get_embedding.return_value = mock_embedding_function
             
             rag = RAGSystem(
                 embedding_model_path="test_embedding.gguf",
@@ -41,12 +41,12 @@ class TestRAGSystem:
         """Test _setup_vectorstore with existing directory."""
         with patch('app.Llama') as mock_llama_class, \
              patch('app.Chroma') as mock_chroma_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
+             patch('app.get_embedding_function') as mock_get_embedding, \
              patch('os.path.exists') as mock_exists:
             
             mock_llama_class.return_value = mock_llama_llm
             mock_chroma_class.return_value = mock_vectorstore = Mock()
-            mock_embedding_class.return_value = mock_embedding_function
+            mock_get_embedding.return_value = mock_embedding_function
             mock_exists.return_value = True
             
             rag = RAGSystem(
@@ -65,12 +65,12 @@ class TestRAGSystem:
         """Test _setup_vectorstore with new directory."""
         with patch('app.Llama') as mock_llama_class, \
              patch('app.Chroma') as mock_chroma_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
+             patch('app.get_embedding_function') as mock_get_embedding, \
              patch('os.path.exists') as mock_exists:
             
             mock_llama_class.return_value = mock_llama_llm
             mock_chroma_class.return_value = mock_vectorstore = Mock()
-            mock_embedding_class.return_value = mock_embedding_function
+            mock_get_embedding.return_value = mock_embedding_function
             mock_exists.return_value = False
             
             rag = RAGSystem(
@@ -89,11 +89,11 @@ class TestRAGSystem:
         """Test calculate_chunk_ids method."""
         with patch('app.Llama') as mock_llama_class, \
              patch('app.Chroma') as mock_chroma_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class:
+             patch('app.get_embedding_function') as mock_get_embedding:
             
             mock_llama_class.return_value = mock_llama_llm
             mock_chroma_class.return_value = mock_vectorstore
-            mock_embedding_class.return_value = mock_embedding_function
+            mock_get_embedding.return_value = mock_embedding_function
             
             rag = RAGSystem(
                 embedding_model_path="test_embedding.gguf",
@@ -127,12 +127,12 @@ class TestRAGSystem:
         """Test load_documents method."""
         with patch('app.Llama') as mock_llama_class, \
              patch('app.Chroma') as mock_chroma_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
+             patch('app.get_embedding_function') as mock_get_embedding, \
              patch('app.PyPDFDirectoryLoader') as mock_pdf_loader_class:
             
             mock_llama_class.return_value = mock_llama_llm
             mock_chroma_class.return_value = mock_vectorstore
-            mock_embedding_class.return_value = mock_embedding_function
+            mock_get_embedding.return_value = mock_embedding_function
             mock_pdf_loader_class.return_value = mock_pdf_loader
             
             rag = RAGSystem(
@@ -153,12 +153,12 @@ class TestRAGSystem:
         """Test split_documents method."""
         with patch('app.Llama') as mock_llama_class, \
              patch('app.Chroma') as mock_chroma_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
+             patch('app.get_embedding_function') as mock_get_embedding, \
              patch('app.RecursiveCharacterTextSplitter') as mock_text_splitter_class:
             
             mock_llama_class.return_value = mock_llama_llm
             mock_chroma_class.return_value = mock_vectorstore
-            mock_embedding_class.return_value = mock_embedding_function
+            mock_get_embedding.return_value = mock_embedding_function
             mock_text_splitter_class.return_value = mock_text_splitter
             
             rag = RAGSystem(
@@ -179,11 +179,11 @@ class TestRAGSystem:
         """Test add_documents with new chunks."""
         with patch('app.Llama') as mock_llama_class, \
              patch('app.Chroma') as mock_chroma_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class:
+             patch('app.get_embedding_function') as mock_get_embedding:
             
             mock_llama_class.return_value = mock_llama_llm
             mock_chroma_class.return_value = mock_vectorstore
-            mock_embedding_class.return_value = mock_embedding_function
+            mock_get_embedding.return_value = mock_embedding_function
             
             # Mock vectorstore.get to return empty existing items
             mock_vectorstore.get.return_value = {"ids": []}
@@ -203,11 +203,11 @@ class TestRAGSystem:
         """Test add_documents with no new chunks."""
         with patch('app.Llama') as mock_llama_class, \
              patch('app.Chroma') as mock_chroma_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class:
+             patch('app.get_embedding_function') as mock_get_embedding:
             
             mock_llama_class.return_value = mock_llama_llm
             mock_chroma_class.return_value = mock_vectorstore
-            mock_embedding_class.return_value = mock_embedding_function
+            mock_get_embedding.return_value = mock_embedding_function
             
             # Mock vectorstore.get to return existing IDs
             existing_ids = [chunk.metadata["id"] for chunk in mock_pdf_chunks]
@@ -228,13 +228,13 @@ class TestRAGSystem:
         """Test populate_database with existing data directory."""
         with patch('app.Llama') as mock_llama_class, \
              patch('app.Chroma') as mock_chroma_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
+             patch('app.get_embedding_function') as mock_get_embedding, \
              patch('app.PyPDFDirectoryLoader') as mock_pdf_loader_class, \
              patch('os.path.exists') as mock_exists:
             
             mock_llama_class.return_value = mock_llama_llm
             mock_chroma_class.return_value = mock_vectorstore
-            mock_embedding_class.return_value = mock_embedding_function
+            mock_get_embedding.return_value = mock_embedding_function
             mock_pdf_loader_class.return_value = mock_pdf_loader
             mock_exists.return_value = True
             
@@ -254,12 +254,12 @@ class TestRAGSystem:
         """Test populate_database with non-existent data directory."""
         with patch('app.Llama') as mock_llama_class, \
              patch('app.Chroma') as mock_chroma_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
+             patch('app.get_embedding_function') as mock_get_embedding, \
              patch('os.path.exists') as mock_exists:
             
             mock_llama_class.return_value = mock_llama_llm
             mock_chroma_class.return_value = mock_vectorstore
-            mock_embedding_class.return_value = mock_embedding_function
+            mock_get_embedding.return_value = mock_embedding_function
             mock_exists.return_value = False
             
             rag = RAGSystem(
@@ -276,11 +276,11 @@ class TestRAGSystem:
         """Test retrieve_documents method."""
         with patch('app.Llama') as mock_llama_class, \
              patch('app.Chroma') as mock_chroma_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class:
+             patch('app.get_embedding_function') as mock_get_embedding:
             
             mock_llama_class.return_value = mock_llama_llm
             mock_chroma_class.return_value = mock_vectorstore
-            mock_embedding_class.return_value = mock_embedding_function
+            mock_get_embedding.return_value = mock_embedding_function
             
             # Mock similarity search results
             mock_docs = [
@@ -307,11 +307,11 @@ class TestRAGSystem:
         """Test generate_response method."""
         with patch('app.Llama') as mock_llama_class, \
              patch('app.Chroma') as mock_chroma_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class:
+             patch('app.get_embedding_function') as mock_get_embedding:
             
             mock_llama_class.return_value = mock_llama_llm
             mock_chroma_class.return_value = mock_vectorstore
-            mock_embedding_class.return_value = mock_embedding_function
+            mock_get_embedding.return_value = mock_embedding_function
             
             rag = RAGSystem(
                 embedding_model_path="test_embedding.gguf",
@@ -342,11 +342,11 @@ class TestRAGSystem:
         """Test complete query flow."""
         with patch('app.Llama') as mock_llama_class, \
              patch('app.Chroma') as mock_chroma_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class:
+             patch('app.get_embedding_function') as mock_get_embedding:
             
             mock_llama_class.return_value = mock_llama_llm
             mock_chroma_class.return_value = mock_vectorstore
-            mock_embedding_class.return_value = mock_embedding_function
+            mock_get_embedding.return_value = mock_embedding_function
             
             # Mock similarity search results
             mock_docs = [
@@ -376,13 +376,13 @@ class TestRAGSystem:
         """Test clear_database method."""
         with patch('app.Llama') as mock_llama_class, \
              patch('app.Chroma') as mock_chroma_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
+             patch('app.get_embedding_function') as mock_get_embedding, \
              patch('os.path.exists') as mock_exists, \
              patch('shutil.rmtree') as mock_rmtree:
             
             mock_llama_class.return_value = mock_llama_llm
             mock_chroma_class.return_value = mock_vectorstore
-            mock_embedding_class.return_value = mock_embedding_function
+            mock_get_embedding.return_value = mock_embedding_function
             mock_exists.return_value = True
             
             rag = RAGSystem(
@@ -400,13 +400,13 @@ class TestRAGSystem:
         """Test clear_database with non-existent directory."""
         with patch('app.Llama') as mock_llama_class, \
              patch('app.Chroma') as mock_chroma_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
+             patch('app.get_embedding_function') as mock_get_embedding, \
              patch('os.path.exists') as mock_exists, \
              patch('shutil.rmtree') as mock_rmtree:
             
             mock_llama_class.return_value = mock_llama_llm
             mock_chroma_class.return_value = mock_vectorstore
-            mock_embedding_class.return_value = mock_embedding_function
+            mock_get_embedding.return_value = mock_embedding_function
             mock_exists.return_value = False
             
             rag = RAGSystem(

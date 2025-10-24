@@ -12,7 +12,8 @@ class TestDatabaseOperations:
     def test_vectorstore_persistence_and_retrieval(self, in_memory_vectorstore, mock_pdf_documents):
         """Test that documents can be stored and retrieved from vectorstore."""
         with patch('app.Llama') as mock_llama_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class:
+             patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
+             patch('app.get_embedding_function') as mock_get_embedding:
             
             # Setup mock embedding function
             mock_embedder = Mock()
@@ -20,8 +21,15 @@ class TestDatabaseOperations:
                 "data": [{"embedding": [0.1] * 768}]
             }
             
+            # Create a mock embedding function that works with both types
+            mock_embedding_function = Mock()
+            mock_embedding_function.embed_documents.return_value = [[0.1] * 768]
+            mock_embedding_function.embed_query.return_value = [0.1] * 768
+            mock_embedding_function.embedder = mock_embedder  # For NomicEmbeddingFunction compatibility
+            
             mock_llama_class.return_value = mock_embedder
-            mock_embedding_class.return_value = Mock()
+            mock_embedding_class.return_value = mock_embedding_function
+            mock_get_embedding.return_value = mock_embedding_function
             
             # Create RAG system
             rag = RAGSystem(
@@ -29,7 +37,6 @@ class TestDatabaseOperations:
                 llm_model_path="test_llm.gguf"
             )
             rag.vectorstore = in_memory_vectorstore
-            rag.embedding_function.embedder = mock_embedder
             
             # Split and add documents
             chunks = rag.split_documents(mock_pdf_documents)
@@ -49,7 +56,8 @@ class TestDatabaseOperations:
     def test_document_deduplication_across_multiple_adds(self, in_memory_vectorstore, mock_pdf_documents):
         """Test that documents are not duplicated when added multiple times."""
         with patch('app.Llama') as mock_llama_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class:
+             patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
+             patch('app.get_embedding_function') as mock_get_embedding:
             
             # Setup mock embedding function
             mock_embedder = Mock()
@@ -57,8 +65,15 @@ class TestDatabaseOperations:
                 "data": [{"embedding": [0.1] * 768}]
             }
             
+            # Create a mock embedding function that works with both types
+            mock_embedding_function = Mock()
+            mock_embedding_function.embed_documents.return_value = [[0.1] * 768]
+            mock_embedding_function.embed_query.return_value = [0.1] * 768
+            mock_embedding_function.embedder = mock_embedder  # For NomicEmbeddingFunction compatibility
+            
             mock_llama_class.return_value = mock_embedder
-            mock_embedding_class.return_value = Mock()
+            mock_embedding_class.return_value = mock_embedding_function
+            mock_get_embedding.return_value = mock_embedding_function
             
             # Create RAG system
             rag = RAGSystem(
@@ -66,7 +81,6 @@ class TestDatabaseOperations:
                 llm_model_path="test_llm.gguf"
             )
             rag.vectorstore = in_memory_vectorstore
-            rag.embedding_function.embedder = mock_embedder
             
             # Add documents first time
             rag.add_documents(mock_pdf_documents)
@@ -86,7 +100,8 @@ class TestDatabaseOperations:
     def test_batch_document_processing(self, in_memory_vectorstore):
         """Test processing multiple documents in batches."""
         with patch('app.Llama') as mock_llama_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class:
+             patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
+             patch('app.get_embedding_function') as mock_get_embedding:
             
             # Setup mock embedding function
             mock_embedder = Mock()
@@ -94,8 +109,15 @@ class TestDatabaseOperations:
                 "data": [{"embedding": [0.1] * 768}]
             }
             
+            # Create a mock embedding function that works with both types
+            mock_embedding_function = Mock()
+            mock_embedding_function.embed_documents.return_value = [[0.1] * 768]
+            mock_embedding_function.embed_query.return_value = [0.1] * 768
+            mock_embedding_function.embedder = mock_embedder  # For NomicEmbeddingFunction compatibility
+            
             mock_llama_class.return_value = mock_embedder
-            mock_embedding_class.return_value = Mock()
+            mock_embedding_class.return_value = mock_embedding_function
+            mock_get_embedding.return_value = mock_embedding_function
             
             # Create RAG system
             rag = RAGSystem(
@@ -103,7 +125,6 @@ class TestDatabaseOperations:
                 llm_model_path="test_llm.gguf"
             )
             rag.vectorstore = in_memory_vectorstore
-            rag.embedding_function.embedder = mock_embedder
             
             # Create multiple batches of documents
             batch1 = [
@@ -146,7 +167,8 @@ class TestDatabaseOperations:
     def test_chunk_id_uniqueness(self, in_memory_vectorstore, mock_pdf_documents):
         """Test that chunk IDs are unique across all documents."""
         with patch('app.Llama') as mock_llama_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class:
+             patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
+             patch('app.get_embedding_function') as mock_get_embedding:
             
             # Setup mock embedding function
             mock_embedder = Mock()
@@ -154,8 +176,15 @@ class TestDatabaseOperations:
                 "data": [{"embedding": [0.1] * 768}]
             }
             
+            # Create a mock embedding function that works with both types
+            mock_embedding_function = Mock()
+            mock_embedding_function.embed_documents.return_value = [[0.1] * 768]
+            mock_embedding_function.embed_query.return_value = [0.1] * 768
+            mock_embedding_function.embedder = mock_embedder  # For NomicEmbeddingFunction compatibility
+            
             mock_llama_class.return_value = mock_embedder
-            mock_embedding_class.return_value = Mock()
+            mock_embedding_class.return_value = mock_embedding_function
+            mock_get_embedding.return_value = mock_embedding_function
             
             # Create RAG system
             rag = RAGSystem(
@@ -163,7 +192,6 @@ class TestDatabaseOperations:
                 llm_model_path="test_llm.gguf"
             )
             rag.vectorstore = in_memory_vectorstore
-            rag.embedding_function.embedder = mock_embedder
             
             # Process documents
             chunks = rag.split_documents(mock_pdf_documents)
@@ -182,7 +210,8 @@ class TestDatabaseOperations:
     def test_similarity_search_consistency(self, in_memory_vectorstore, mock_pdf_documents):
         """Test that similarity search returns consistent results."""
         with patch('app.Llama') as mock_llama_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class:
+             patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
+             patch('app.get_embedding_function') as mock_get_embedding:
             
             # Setup mock embedding function with consistent responses
             mock_embedder = Mock()
@@ -190,8 +219,15 @@ class TestDatabaseOperations:
                 "data": [{"embedding": [0.1] * 768}]
             }
             
+            # Create a mock embedding function that works with both types
+            mock_embedding_function = Mock()
+            mock_embedding_function.embed_documents.return_value = [[0.1] * 768]
+            mock_embedding_function.embed_query.return_value = [0.1] * 768
+            mock_embedding_function.embedder = mock_embedder  # For NomicEmbeddingFunction compatibility
+            
             mock_llama_class.return_value = mock_embedder
-            mock_embedding_class.return_value = Mock()
+            mock_embedding_class.return_value = mock_embedding_function
+            mock_get_embedding.return_value = mock_embedding_function
             
             # Create RAG system
             rag = RAGSystem(
@@ -199,7 +235,6 @@ class TestDatabaseOperations:
                 llm_model_path="test_llm.gguf"
             )
             rag.vectorstore = in_memory_vectorstore
-            rag.embedding_function.embedder = mock_embedder
             
             # Add documents
             rag.add_documents(mock_pdf_documents)
@@ -215,7 +250,8 @@ class TestDatabaseOperations:
     def test_database_clear_and_rebuild(self, in_memory_vectorstore, mock_pdf_documents):
         """Test clearing database and rebuilding with new documents."""
         with patch('app.Llama') as mock_llama_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class:
+             patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
+             patch('app.get_embedding_function') as mock_get_embedding:
             
             # Setup mock embedding function
             mock_embedder = Mock()
@@ -223,8 +259,15 @@ class TestDatabaseOperations:
                 "data": [{"embedding": [0.1] * 768}]
             }
             
+            # Create a mock embedding function that works with both types
+            mock_embedding_function = Mock()
+            mock_embedding_function.embed_documents.return_value = [[0.1] * 768]
+            mock_embedding_function.embed_query.return_value = [0.1] * 768
+            mock_embedding_function.embedder = mock_embedder  # For NomicEmbeddingFunction compatibility
+            
             mock_llama_class.return_value = mock_embedder
-            mock_embedding_class.return_value = Mock()
+            mock_embedding_class.return_value = mock_embedding_function
+            mock_get_embedding.return_value = mock_embedding_function
             
             # Create RAG system
             rag = RAGSystem(
@@ -232,7 +275,6 @@ class TestDatabaseOperations:
                 llm_model_path="test_llm.gguf"
             )
             rag.vectorstore = in_memory_vectorstore
-            rag.embedding_function.embedder = mock_embedder
             
             # Add initial documents
             rag.add_documents(mock_pdf_documents)
@@ -253,7 +295,8 @@ class TestDatabaseOperations:
     def test_metadata_preservation(self, in_memory_vectorstore, mock_pdf_documents):
         """Test that document metadata is preserved through the pipeline."""
         with patch('app.Llama') as mock_llama_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class:
+             patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
+             patch('app.get_embedding_function') as mock_get_embedding:
             
             # Setup mock embedding function
             mock_embedder = Mock()
@@ -261,8 +304,15 @@ class TestDatabaseOperations:
                 "data": [{"embedding": [0.1] * 768}]
             }
             
+            # Create a mock embedding function that works with both types
+            mock_embedding_function = Mock()
+            mock_embedding_function.embed_documents.return_value = [[0.1] * 768]
+            mock_embedding_function.embed_query.return_value = [0.1] * 768
+            mock_embedding_function.embedder = mock_embedder  # For NomicEmbeddingFunction compatibility
+            
             mock_llama_class.return_value = mock_embedder
-            mock_embedding_class.return_value = Mock()
+            mock_embedding_class.return_value = mock_embedding_function
+            mock_get_embedding.return_value = mock_embedding_function
             
             # Create RAG system
             rag = RAGSystem(
@@ -270,7 +320,6 @@ class TestDatabaseOperations:
                 llm_model_path="test_llm.gguf"
             )
             rag.vectorstore = in_memory_vectorstore
-            rag.embedding_function.embedder = mock_embedder
             
             # Add documents
             rag.add_documents(mock_pdf_documents)
@@ -287,7 +336,8 @@ class TestDatabaseOperations:
     def test_large_document_handling(self, in_memory_vectorstore):
         """Test handling of large documents with many chunks."""
         with patch('app.Llama') as mock_llama_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class:
+             patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
+             patch('app.get_embedding_function') as mock_get_embedding:
             
             # Setup mock embedding function
             mock_embedder = Mock()
@@ -295,8 +345,15 @@ class TestDatabaseOperations:
                 "data": [{"embedding": [0.1] * 768}]
             }
             
+            # Create a mock embedding function that works with both types
+            mock_embedding_function = Mock()
+            mock_embedding_function.embed_documents.return_value = [[0.1] * 768]
+            mock_embedding_function.embed_query.return_value = [0.1] * 768
+            mock_embedding_function.embedder = mock_embedder  # For NomicEmbeddingFunction compatibility
+            
             mock_llama_class.return_value = mock_embedder
-            mock_embedding_class.return_value = Mock()
+            mock_embedding_class.return_value = mock_embedding_function
+            mock_get_embedding.return_value = mock_embedding_function
             
             # Create RAG system
             rag = RAGSystem(
@@ -304,7 +361,6 @@ class TestDatabaseOperations:
                 llm_model_path="test_llm.gguf"
             )
             rag.vectorstore = in_memory_vectorstore
-            rag.embedding_function.embedder = mock_embedder
             
             # Create a large document (simulated by creating many small documents)
             large_docs = []
@@ -328,7 +384,8 @@ class TestDatabaseOperations:
     def test_mixed_document_types(self, in_memory_vectorstore):
         """Test handling of documents with different metadata structures."""
         with patch('app.Llama') as mock_llama_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class:
+             patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
+             patch('app.get_embedding_function') as mock_get_embedding:
             
             # Setup mock embedding function
             mock_embedder = Mock()
@@ -336,8 +393,15 @@ class TestDatabaseOperations:
                 "data": [{"embedding": [0.1] * 768}]
             }
             
+            # Create a mock embedding function that works with both types
+            mock_embedding_function = Mock()
+            mock_embedding_function.embed_documents.return_value = [[0.1] * 768]
+            mock_embedding_function.embed_query.return_value = [0.1] * 768
+            mock_embedding_function.embedder = mock_embedder  # For NomicEmbeddingFunction compatibility
+            
             mock_llama_class.return_value = mock_embedder
-            mock_embedding_class.return_value = Mock()
+            mock_embedding_class.return_value = mock_embedding_function
+            mock_get_embedding.return_value = mock_embedding_function
             
             # Create RAG system
             rag = RAGSystem(
@@ -345,7 +409,6 @@ class TestDatabaseOperations:
                 llm_model_path="test_llm.gguf"
             )
             rag.vectorstore = in_memory_vectorstore
-            rag.embedding_function.embedder = mock_embedder
             
             # Create documents with different metadata
             mixed_docs = [
