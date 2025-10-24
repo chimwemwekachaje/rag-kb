@@ -13,6 +13,8 @@ short_description: 'Ed Donner''s LLM Udemy course knowledge base '
 
 # Llama RAG Knowledge Base
 
+[![CI/CD Pipeline](https://github.com/chimwemwekachaje/rag-kb/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/chimwemwekachaje/rag-kb/actions/workflows/ci-cd.yml)
+
 A Retrieval-Augmented Generation (RAG) knowledge base system using Llama.cpp and GGUF models. This application combines the power of local LLMs with document retrieval to provide accurate, context-aware responses.
 
 ## Features
