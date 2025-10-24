@@ -127,11 +127,13 @@ class TestRAGSystem:
         """Test load_documents method."""
         with patch('app.Llama') as mock_llama_class, \
              patch('app.Chroma') as mock_chroma_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class:
+             patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
+             patch('app.PyPDFDirectoryLoader') as mock_pdf_loader_class:
             
             mock_llama_class.return_value = mock_llama_llm
             mock_chroma_class.return_value = mock_vectorstore
             mock_embedding_class.return_value = mock_embedding_function
+            mock_pdf_loader_class.return_value = mock_pdf_loader
             
             rag = RAGSystem(
                 embedding_model_path="test_embedding.gguf",
@@ -142,6 +144,8 @@ class TestRAGSystem:
             result = rag.load_documents()
             
             # Verify PyPDFDirectoryLoader was called
+            mock_pdf_loader_class.assert_called_once_with("./test_data")
+            mock_pdf_loader.load.assert_called_once()
             assert result is not None
             assert len(result) == 2  # From mock_pdf_loader fixture
 
@@ -149,11 +153,13 @@ class TestRAGSystem:
         """Test split_documents method."""
         with patch('app.Llama') as mock_llama_class, \
              patch('app.Chroma') as mock_chroma_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class:
+             patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
+             patch('app.RecursiveCharacterTextSplitter') as mock_text_splitter_class:
             
             mock_llama_class.return_value = mock_llama_llm
             mock_chroma_class.return_value = mock_vectorstore
             mock_embedding_class.return_value = mock_embedding_function
+            mock_text_splitter_class.return_value = mock_text_splitter
             
             rag = RAGSystem(
                 embedding_model_path="test_embedding.gguf",
@@ -164,6 +170,8 @@ class TestRAGSystem:
             result = rag.split_documents(documents)
             
             # Verify text splitter was called
+            mock_text_splitter_class.assert_called_once()
+            mock_text_splitter.split_documents.assert_called_once_with(documents)
             assert result is not None
             assert len(result) == 2  # From mock_text_splitter fixture
 
@@ -221,11 +229,13 @@ class TestRAGSystem:
         with patch('app.Llama') as mock_llama_class, \
              patch('app.Chroma') as mock_chroma_class, \
              patch('app.NomicEmbeddingFunction') as mock_embedding_class, \
+             patch('app.PyPDFDirectoryLoader') as mock_pdf_loader_class, \
              patch('os.path.exists') as mock_exists:
             
             mock_llama_class.return_value = mock_llama_llm
             mock_chroma_class.return_value = mock_vectorstore
             mock_embedding_class.return_value = mock_embedding_function
+            mock_pdf_loader_class.return_value = mock_pdf_loader
             mock_exists.return_value = True
             
             rag = RAGSystem(
@@ -237,7 +247,8 @@ class TestRAGSystem:
             rag.populate_database()
             
             # Verify load_documents was called (through mock_pdf_loader)
-            assert mock_pdf_loader.load.called
+            mock_pdf_loader_class.assert_called_once_with("./test_data")
+            mock_pdf_loader.load.assert_called_once()
 
     def test_populate_database_no_data_directory(self, mock_embedding_function, mock_llama_llm, mock_vectorstore):
         """Test populate_database with non-existent data directory."""

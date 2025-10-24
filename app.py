@@ -169,7 +169,9 @@ class RAGSystem:
             print(f"👉 Adding new documents: {len(new_chunks)}")
             new_chunk_ids = [chunk.metadata["id"] for chunk in new_chunks]
             self.vectorstore.add_documents(new_chunks, ids=new_chunk_ids)
-            self.vectorstore.persist()
+            # Only persist if the vectorstore supports it (e.g., not in-memory)
+            if hasattr(self.vectorstore, 'persist'):
+                self.vectorstore.persist()
         else:
             print("✅ No new documents to add")
 

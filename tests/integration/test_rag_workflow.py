@@ -215,8 +215,7 @@ class TestRAGWorkflowIntegration:
 
     def test_error_handling_in_workflow(self, in_memory_vectorstore):
         """Test error handling throughout the workflow."""
-        with patch('app.Llama') as mock_llama_class, \
-             patch('app.NomicEmbeddingFunction') as mock_embedding_class:
+        with patch('app.Llama') as mock_llama_class:
             
             # Setup mock models that can raise errors
             mock_embedder = Mock()
@@ -226,7 +225,6 @@ class TestRAGWorkflowIntegration:
             mock_llm.side_effect = Exception("LLM error")
             
             mock_llama_class.return_value = mock_embedder
-            mock_embedding_class.return_value = Mock()
             
             # Create RAG system
             rag = RAGSystem(

@@ -13,8 +13,10 @@ class TestGradioComponents:
         mock_gr, mock_pdf = mock_gradio_components
         pdf_files = [("Course Summary.pdf", "data/Course Summary.pdf")]
         
-        # Create accordion UI
-        result = create_accordion_ui(sample_folder_structure, pdf_files)
+        # Patch the gr module in the app module
+        with patch('app.gr', mock_gr):
+            # Create accordion UI
+            result = create_accordion_ui(sample_folder_structure, pdf_files)
         
         # Verify gr.Blocks was called
         mock_gr.Blocks.assert_called_once()
@@ -33,8 +35,10 @@ class TestGradioComponents:
             ("Week 2 Day 1.pdf", "data/Week 2/Week 2 Day 1.pdf")
         ]
         
-        # Create accordion UI
-        result = create_accordion_ui(sample_folder_structure, pdf_files)
+        # Patch the gr module in the app module
+        with patch('app.gr', mock_gr):
+            # Create accordion UI
+            result = create_accordion_ui(sample_folder_structure, pdf_files)
         
         # Verify multiple accordions were created (main + nested)
         assert mock_gr.Accordion.call_count >= 2
@@ -48,8 +52,10 @@ class TestGradioComponents:
         empty_structure = {}
         empty_pdf_files = []
         
-        # Create accordion UI
-        result = create_accordion_ui(empty_structure, empty_pdf_files)
+        # Patch the gr module in the app module
+        with patch('app.gr', mock_gr):
+            # Create accordion UI
+            result = create_accordion_ui(empty_structure, empty_pdf_files)
         
         # Should still create the main structure
         mock_gr.Blocks.assert_called_once()
@@ -60,8 +66,10 @@ class TestGradioComponents:
         mock_gr, mock_pdf = mock_gradio_components
         pdf_files = [("test.pdf", "data/test.pdf")]
         
-        # Create accordion UI
-        result = create_accordion_ui(sample_folder_structure, pdf_files)
+        # Patch the gr module in the app module
+        with patch('app.gr', mock_gr):
+            # Create accordion UI
+            result = create_accordion_ui(sample_folder_structure, pdf_files)
         
         # Verify buttons have click handlers
         mock_gr.Button.assert_called()
@@ -98,8 +106,10 @@ class TestGradioComponents:
         mock_blocks.__exit__ = Mock(return_value=None)
         mock_gr.Blocks.return_value = mock_blocks
         
-        # Create accordion UI
-        result = create_accordion_ui({}, [])
+        # Patch the gr module in the app module
+        with patch('app.gr', mock_gr):
+            # Create accordion UI
+            result = create_accordion_ui({}, [])
         
         # Verify Blocks was called
         mock_gr.Blocks.assert_called_once()
@@ -114,8 +124,10 @@ class TestGradioComponents:
         mock_accordion.__exit__ = Mock(return_value=None)
         mock_gr.Accordion.return_value = mock_accordion
         
-        # Create accordion UI
-        result = create_accordion_ui(sample_folder_structure, [])
+        # Patch the gr module in the app module
+        with patch('app.gr', mock_gr):
+            # Create accordion UI
+            result = create_accordion_ui(sample_folder_structure, [])
         
         # Verify Accordion was called
         mock_gr.Accordion.assert_called()
@@ -134,8 +146,10 @@ class TestGradioComponents:
         """Test Gradio button properties and configuration."""
         mock_gr, mock_pdf = mock_gradio_components
         
-        # Create accordion UI
-        result = create_accordion_ui(sample_folder_structure, [])
+        # Patch the gr module in the app module
+        with patch('app.gr', mock_gr):
+            # Create accordion UI
+            result = create_accordion_ui(sample_folder_structure, [])
         
         # Verify Button was called with correct parameters
         mock_gr.Button.assert_called()
@@ -152,8 +166,10 @@ class TestGradioComponents:
         """Test Gradio accordion properties and configuration."""
         mock_gr, mock_pdf = mock_gradio_components
         
-        # Create accordion UI
-        result = create_accordion_ui(sample_folder_structure, [])
+        # Patch the gr module in the app module
+        with patch('app.gr', mock_gr):
+            # Create accordion UI
+            result = create_accordion_ui(sample_folder_structure, [])
         
         # Verify Accordion was called
         mock_gr.Accordion.assert_called()
@@ -170,8 +186,10 @@ class TestGradioComponents:
         """Test that Gradio components are created in correct hierarchy."""
         mock_gr, mock_pdf = mock_gradio_components
         
-        # Create accordion UI
-        result = create_accordion_ui(sample_folder_structure, [])
+        # Patch the gr module in the app module
+        with patch('app.gr', mock_gr):
+            # Create accordion UI
+            result = create_accordion_ui(sample_folder_structure, [])
         
         # Verify the component creation order
         # Blocks should be created first
@@ -187,8 +205,10 @@ class TestGradioComponents:
         """Test that Gradio event handlers are properly configured."""
         mock_gr, mock_pdf = mock_gradio_components
         
-        # Create accordion UI
-        result = create_accordion_ui(sample_folder_structure, [])
+        # Patch the gr module in the app module
+        with patch('app.gr', mock_gr):
+            # Create accordion UI
+            result = create_accordion_ui(sample_folder_structure, [])
         
         # Verify button click handlers are set up
         button_mock = mock_gr.Button.return_value
@@ -202,8 +222,10 @@ class TestGradioComponents:
         """Test that UI can be created without launching the server."""
         mock_gr, mock_pdf = mock_gradio_components
         
-        # Create accordion UI (should not launch server)
-        result = create_accordion_ui(sample_folder_structure, [])
+        # Patch the gr module in the app module
+        with patch('app.gr', mock_gr):
+            # Create accordion UI (should not launch server)
+            result = create_accordion_ui(sample_folder_structure, [])
         
         # Verify no launch method was called
         mock_blocks = mock_gr.Blocks.return_value
@@ -232,8 +254,10 @@ class TestGradioComponents:
         # Test with invalid folder structure
         invalid_structure = {"invalid": None}
         
-        # Should handle gracefully
-        result = create_accordion_ui(invalid_structure, [])
+        # Patch the gr module in the app module
+        with patch('app.gr', mock_gr):
+            # Should handle gracefully
+            result = create_accordion_ui(invalid_structure, [])
         
         # Verify UI was still created
         mock_gr.Blocks.assert_called()
@@ -242,8 +266,10 @@ class TestGradioComponents:
         """Test that Gradio UI components have proper accessibility features."""
         mock_gr, mock_pdf = mock_gradio_components
         
-        # Create accordion UI
-        result = create_accordion_ui(sample_folder_structure, [])
+        # Patch the gr module in the app module
+        with patch('app.gr', mock_gr):
+            # Create accordion UI
+            result = create_accordion_ui(sample_folder_structure, [])
         
         # Verify components have proper labels/descriptions
         mock_gr.Button.assert_called()
@@ -258,8 +284,10 @@ class TestGradioComponents:
         """Test that Gradio UI components support responsive design."""
         mock_gr, mock_pdf = mock_gradio_components
         
-        # Create accordion UI
-        result = create_accordion_ui(sample_folder_structure, [])
+        # Patch the gr module in the app module
+        with patch('app.gr', mock_gr):
+            # Create accordion UI
+            result = create_accordion_ui(sample_folder_structure, [])
         
         # Verify components are created (responsive behavior is handled by Gradio)
         mock_gr.Blocks.assert_called()
@@ -270,8 +298,10 @@ class TestGradioComponents:
         """Test that Gradio UI components work with different themes."""
         mock_gr, mock_pdf = mock_gradio_components
         
-        # Create accordion UI
-        result = create_accordion_ui(sample_folder_structure, [])
+        # Patch the gr module in the app module
+        with patch('app.gr', mock_gr):
+            # Create accordion UI
+            result = create_accordion_ui(sample_folder_structure, [])
         
         # Verify components are created (theme handling is done by Gradio)
         mock_gr.Blocks.assert_called()

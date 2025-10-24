@@ -109,7 +109,11 @@ reset_db() {
 
 run_tests(){
     print_status "Running tests..."
-    python -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term-missing
+    # Activate virtual environment if it exists
+    if [ -d ".venv" ]; then
+        source .venv/bin/activate
+    fi
+    python -m pytest tests/ -x -v --cov=app --cov-report=html --cov-report=term-missing
     print_success "Tests completed"
 }
 

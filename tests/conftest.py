@@ -168,6 +168,46 @@ def mock_vectorstore():
 
 
 @pytest.fixture
+def in_memory_vectorstore():
+    """Real in-memory ChromaDB vectorstore for integration tests."""
+    try:
+        import chromadb
+        from langchain_chroma import Chroma
+        
+        # Create ephemeral client for testing
+        client = chromadb.EphemeralClient()
+        collection = client.create_collection("test_collection")
+        
+        # Create a mock embedding function for the vectorstore
+        mock_embedding_function = Mock()
+        # Return one embedding per document
+        mock_embedding_function.embed_documents.side_effect = lambda texts: [[0.1] * 768 for _ in texts]
+        mock_embedding_function.embed_query.return_value = [0.1] * 768
+        
+        vectorstore = Chroma(
+            client=client,
+            collection_name="test_collection",
+            embedding_function=mock_embedding_function
+        )
+        
+        yield vectorstore
+        
+        # Cleanup
+        client.delete_collection("test_collection")
+        
+    except ImportError:
+        # Fallback to mock if chromadb is not available
+        mock_vs = Mock()
+        mock_vs.get.return_value = {"ids": []}
+        mock_vs.add_documents.return_value = None
+        mock_vs.persist.return_value = None
+        mock_vs.similarity_search_with_score.return_value = [
+            (Mock(page_content="Test content", metadata={"source": "test.pdf"}), 0.9)
+        ]
+        yield mock_vs
+
+
+@pytest.fixture
 def sample_query_result():
     """Sample RAG query result."""
     return {
