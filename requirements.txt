@@ -4,6 +4,7 @@ langchain-text-splitters
 langchain-core
 langchain-community
 langchain-huggingface
+sentence-transformers
 gradio
 gradio-pdf
 pypdf>=6.1.3

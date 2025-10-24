@@ -29,7 +29,7 @@ class TestNomicEmbeddingFunction:
                 embedding=True,
                 n_ctx=512,
                 n_threads=1,  # Updated to match actual implementation
-                n_batch=512,
+                n_batch=128,  # Updated to match actual implementation
                 n_gpu_layers=0,
                 use_mmap=True,
                 use_mlock=False,
