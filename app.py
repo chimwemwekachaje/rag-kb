@@ -603,11 +603,11 @@ def main():
         if rag_container.is_ready():
             try:
                 rag_system = rag_container.get()
-                # Close LLM and embedding models if they have cleanup methods
+                # Close LLM if it has cleanup methods
                 if hasattr(rag_system.llm, 'close'):
                     rag_system.llm.close()
-                if hasattr(rag_system.embedding_function.embedder, 'close'):
-                    rag_system.embedding_function.embedder.close()
+                # Note: NomicEmbeddingFunction creates embedder instances on-demand
+                # and cleans them up immediately after use, so no cleanup needed here
             except Exception as e:
                 print(f"Error during cleanup: {e}")
         
