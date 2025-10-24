@@ -107,6 +107,12 @@ reset_db() {
     fi
 }
 
+run_tests(){
+    print_status "Running tests..."
+    python -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term-missing
+    print_success "Tests completed"
+}
+
 # Function to show help
 show_help() {
     echo "Llama RAG Knowledge Base Control Script"
@@ -119,6 +125,7 @@ show_help() {
     echo "  add [dependency]                     Add a dependency"
     echo "  start [embedding_model] [llm_model]  Start the application"
     echo "  reset                                Reset the vector database"
+    echo "  tests                                Run tests"
     echo "  help                                 Show this help message"
     echo ""
     echo "Examples:"
@@ -161,6 +168,9 @@ case "${1:-start}" in
         ;;
     setup)
         setup_venv
+        ;;
+    test|tests)
+        run_tests
         ;;
     help|--help|-h)
         show_help
