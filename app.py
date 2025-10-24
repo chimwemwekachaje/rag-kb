@@ -468,6 +468,10 @@ def launch_gradio_ui(rag_container: RAGSystemContainer, folder_structure: Dict, 
             """Change PDF starting page"""
             return PDF(starting_page=page_num)
         
+        def clear_inputs():
+            """Clear query input and output fields"""
+            return "", ""
+        
         # Create Gradio interface
         with gr.Blocks(fill_width=True, title="Llama RAG Knowledge Base") as view:
             pdf_input = gr.File(label="Upload PDF", visible=False)
@@ -503,7 +507,9 @@ def launch_gradio_ui(rag_container: RAGSystemContainer, folder_structure: Dict, 
                         value="What is the key subject of these documents?",
                         lines=3
                     )
-                    query_button = gr.Button("Search", variant="primary")
+                    with gr.Row():
+                        query_button = gr.Button("Search", variant="primary")
+                        clear_button = gr.Button("Clear", variant="secondary")
                     query_output = gr.TextArea(label="Response", lines=8)
                     sources_input = gr.Dropdown(label="Sources", choices=[])
                 
@@ -513,6 +519,8 @@ def launch_gradio_ui(rag_container: RAGSystemContainer, folder_structure: Dict, 
             # Event handlers
             pdf_display.allow_file_upload = False
             query_button.click(rag_query, inputs=query_input, outputs=query_output)
+            query_input.submit(rag_query, inputs=query_input, outputs=query_output)
+            clear_button.click(clear_inputs, outputs=[query_input, query_output])
             query_output.change(fn=update_sources_dropdown, outputs=sources_input)
             sources_input.change(
                 load_pdf, inputs=sources_input, outputs=[pdf_input, page_number]
