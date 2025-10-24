@@ -1,12 +1,6 @@
 # Use Python 3.12 slim image as base
 FROM python:3.12-slim
 
-# Set up a new user named "user" with user ID 1000
-RUN useradd -m -u 1000 user
-
-# Switch to the "user" user
-USER user
-
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV GRADIO_SERVER_NAME=0.0.0.0
@@ -27,9 +21,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --only-binary=all -r requirements.txt
 
 # Copy application files
-COPY  --chown=user app.py .
-COPY  --chown=user models/ ./models/
-COPY  --chown=user data/ ./data/
+COPY  app.py .
+COPY  models/ ./models/
+COPY  data/ ./data/
 
 # Create directory for ChromaDB
 RUN mkdir -p /app/chroma
