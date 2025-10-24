@@ -61,3 +61,4 @@ chroma/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+.gradio/
