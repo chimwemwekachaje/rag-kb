@@ -32,7 +32,7 @@ jobs:
     - name: Clone and sync to HuggingFace Space
       run: |
         git clone https://huggingface.co/spaces/kachaje/llm-kb temp-space
-        cp -r . temp-space/
+        rsync -av --exclude=temp-space . temp-space/
         cd temp-space
         git add .
         git commit -m "Sync from GitHub - $(date)" || true
