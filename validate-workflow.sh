@@ -29,8 +29,14 @@ echo "✅ All required files found"
 # Validate workflow syntax using act (if available)
 if command -v act &> /dev/null; then
     echo "🧪 Testing workflow syntax with act..."
-    act --dry-run
-    echo "✅ Workflow syntax is valid"
+    if act --list > /dev/null 2>&1; then
+        echo "✅ Workflow syntax is valid"
+        echo "📋 Available jobs:"
+        act --list
+    else
+        echo "❌ Workflow syntax validation failed"
+        exit 1
+    fi
 else
     echo "⚠️  'act' not installed. Install it to test workflow locally:"
     echo "   brew install act  # macOS"
