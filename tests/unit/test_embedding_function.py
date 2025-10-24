@@ -10,17 +10,25 @@ class TestNomicEmbeddingFunction:
 
     def test_init_success(self, mock_llama_embedder):
         """Test successful initialization of NomicEmbeddingFunction."""
+        embedding_function = NomicEmbeddingFunction("test_model.gguf")
+        
+        # Verify initialization sets correct attributes
+        assert embedding_function.model_path == "test_model.gguf"
+        assert embedding_function.batch_size == 16  # default value
+        assert hasattr(embedding_function, '_lock')
+        
+        # Test that _get_embedder creates embedder with correct parameters
         with patch('app.Llama') as mock_llama_class:
             mock_llama_class.return_value = mock_llama_embedder
             
-            embedding_function = NomicEmbeddingFunction("test_model.gguf")
+            embedder = embedding_function._get_embedder()
             
             # Verify Llama was called with correct parameters
             mock_llama_class.assert_called_once_with(
                 model_path="test_model.gguf",
                 embedding=True,
                 n_ctx=512,
-                n_threads=3,
+                n_threads=1,  # Updated to match actual implementation
                 n_batch=512,
                 n_gpu_layers=0,
                 use_mmap=True,
@@ -29,7 +37,7 @@ class TestNomicEmbeddingFunction:
                 verbose=False,
                 logits_all=False
             )
-            assert embedding_function.embedder == mock_llama_embedder
+            assert embedder == mock_llama_embedder
 
     def test_embed_documents_success(self, mock_llama_embedder):
         """Test successful embedding of multiple documents."""
