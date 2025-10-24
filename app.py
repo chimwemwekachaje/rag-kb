@@ -389,7 +389,7 @@ def create_accordion_ui(folder_structure: Dict, pdf_files: List[Tuple[str, str]]
         return PDF(starting_page=page_num)
     
     with gr.Blocks() as accordion_ui:
-        with gr.Accordion("Course Contents", open=True):
+        with gr.Accordion("Course Contents", open=False):
             def create_nested_accordions(structure, level=0):
                 """Recursively create nested accordions"""
                 for name, content in structure.items():
@@ -482,7 +482,7 @@ def launch_gradio_ui(rag_container: RAGSystemContainer, folder_structure: Dict, 
             with gr.Row():
                 with gr.Column(scale=1):
                     # Nested Accordions for hierarchical navigation
-                    with gr.Accordion("Course Contents", open=True):
+                    with gr.Accordion("Course Contents", open=False):
                         def create_nested_accordions(structure, level=0):
                             """Recursively create nested accordions"""
                             for name, content in structure.items():
