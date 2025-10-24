@@ -6,7 +6,6 @@ import sys
 import threading
 import time
 from typing import List, Dict, Any, Tuple
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from llama_cpp import Llama
 from langchain_chroma import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -20,12 +19,19 @@ class NomicEmbeddingFunction:
     """Custom embedding function using nomic-embed-text.gguf"""
 
     def __init__(self, model_path: str, batch_size: int = 16):
+        self.model_path = model_path
         self.batch_size = batch_size
-        self.embedder = Llama(
-            model_path=model_path,
+        self._lock = threading.Lock()
+        # Don't initialize the embedder here - create it per-thread
+
+    def _get_embedder(self) -> Llama:
+        """Get a thread-local embedder instance"""
+        # Create a new embedder instance for each thread to avoid threading issues
+        return Llama(
+            model_path=self.model_path,
             embedding=True,
             n_ctx=512,  # Smaller context for embeddings
-            n_threads=3,  # Reduced for better memory efficiency
+            n_threads=1,  # Single thread per instance
             n_batch=512,  # Optimize batch processing
             n_gpu_layers=0,  # Explicitly use CPU
             use_mmap=True,  # Memory-efficient model loading
@@ -41,31 +47,30 @@ class NomicEmbeddingFunction:
             if not text.strip():
                 return [0.0] * 768  # Assuming 768-dimensional embeddings
 
-            response = self.embedder.create_embedding(text.strip())
+            # Create a new embedder instance for this thread
+            embedder = self._get_embedder()
+            response = embedder.create_embedding(text.strip())
+            
+            # Clean up the embedder instance
+            if hasattr(embedder, 'close'):
+                embedder.close()
+            
             return response["data"][0]["embedding"]
         except Exception as e:
             print(f"Error embedding text: {e}")
             return [0.0] * 768
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        """Embed a list of documents using parallel processing"""
+        """Embed a list of documents sequentially to avoid threading issues"""
         if not texts:
             return []
         
-        embeddings = [None] * len(texts)
+        embeddings = []
         
-        # Use ThreadPoolExecutor for parallel processing
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            # Submit all embedding tasks
-            futures = {}
-            for idx, text in enumerate(texts):
-                future = executor.submit(self._embed_single, text)
-                futures[future] = idx
-            
-            # Collect results as they complete
-            for future in as_completed(futures):
-                idx = futures[future]
-                embeddings[idx] = future.result()
+        # Process sequentially to avoid threading issues with the model
+        for text in texts:
+            embedding = self._embed_single(text)
+            embeddings.append(embedding)
         
         return embeddings
 
@@ -176,8 +181,21 @@ class RAGSystem:
 
         if len(new_chunks):
             print(f"👉 Adding new documents: {len(new_chunks)}")
-            new_chunk_ids = [chunk.metadata["id"] for chunk in new_chunks]
-            self.vectorstore.add_documents(new_chunks, ids=new_chunk_ids)
+            
+            # Process in smaller batches to avoid memory issues
+            batch_size = 50  # Process 50 chunks at a time
+            for i in range(0, len(new_chunks), batch_size):
+                batch = new_chunks[i:i + batch_size]
+                batch_ids = [chunk.metadata["id"] for chunk in batch]
+                
+                try:
+                    print(f"Processing batch {i//batch_size + 1}/{(len(new_chunks) + batch_size - 1)//batch_size} ({len(batch)} chunks)")
+                    self.vectorstore.add_documents(batch, ids=batch_ids)
+                except Exception as e:
+                    print(f"Error processing batch {i//batch_size + 1}: {e}")
+                    # Continue with next batch
+                    continue
+            
             # Only persist if the vectorstore supports it (e.g., not in-memory)
             if hasattr(self.vectorstore, 'persist'):
                 self.vectorstore.persist()

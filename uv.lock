@@ -1263,7 +1263,7 @@ wheels = [
 
 [[package]]
 name = "llama-cpp-python"
-version = "0.3.16"
+version = "0.2.83"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "diskcache" },
@@ -1271,7 +1271,7 @@ dependencies = [
     { name = "numpy" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e4/b4/c8cd17629ced0b9644a71d399a91145aedef109c0333443bef015e45b704/llama_cpp_python-0.3.16.tar.gz", hash = "sha256:34ed0f9bd9431af045bb63d9324ae620ad0536653740e9bb163a2e1fcb973be6", size = 50688636, upload-time = "2025-08-15T04:58:29.212Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ae/06/515b8cd8f5965190bb229efc8013153beadb52b5db525b87fe46546fbc0e/llama_cpp_python-0.2.83.tar.gz", hash = "sha256:b08f070ce787959dcac635aaea93d14bde3b76347a5f8e8fc570735249f36e1c", size = 49351840, upload-time = "2024-07-22T19:28:20.32Z" }
 
 [[package]]
 name = "llama-rag-kb"
@@ -1301,7 +1301,7 @@ requires-dist = [
     { name = "langchain-community" },
     { name = "langchain-core" },
     { name = "langchain-text-splitters" },
-    { name = "llama-cpp-python" },
+    { name = "llama-cpp-python", specifier = "==0.2.83" },
     { name = "pypdf", specifier = ">=6.1.3" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-cov", specifier = ">=4.1.0" },
