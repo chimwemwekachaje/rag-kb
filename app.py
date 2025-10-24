@@ -241,7 +241,29 @@ Context:
             print(f"Cleared database at {self.chroma_persist_dir}")
 
 
-def initialize_rag_system(embedding_model_path: str, llm_model_path: str, shutdown_event: threading.Event, rag_ready_event: threading.Event) -> RAGSystem:
+class RAGSystemContainer:
+    """Thread-safe container for RAG system reference"""
+    def __init__(self):
+        self._rag = None
+        self._lock = threading.Lock()
+    
+    def set(self, rag_system: RAGSystem):
+        """Set the RAG system instance"""
+        with self._lock:
+            self._rag = rag_system
+    
+    def get(self) -> RAGSystem:
+        """Get the RAG system instance"""
+        with self._lock:
+            return self._rag
+    
+    def is_ready(self) -> bool:
+        """Check if RAG system is initialized"""
+        with self._lock:
+            return self._rag is not None
+
+
+def initialize_rag_system(embedding_model_path: str, llm_model_path: str, shutdown_event: threading.Event, rag_ready_event: threading.Event, rag_container: RAGSystemContainer) -> RAGSystem:
     """Initialize RAG system in a separate thread"""
     try:
         print("Initializing RAG system...")
@@ -254,6 +276,7 @@ def initialize_rag_system(embedding_model_path: str, llm_model_path: str, shutdo
             print("Populating database...")
             rag.populate_database()
             print("RAG system initialization completed")
+            rag_container.set(rag)  # Store RAG system in container
             rag_ready_event.set()  # Signal that RAG is ready
         else:
             print("RAG system initialization cancelled due to shutdown signal")
@@ -339,7 +362,7 @@ def create_accordion_ui(folder_structure: Dict, pdf_files: List[Tuple[str, str]]
     return accordion_ui
 
 
-def launch_gradio_ui(rag: RAGSystem, folder_structure: Dict, shutdown_event: threading.Event, rag_ready_event: threading.Event) -> gr.Blocks:
+def launch_gradio_ui(rag_container: RAGSystemContainer, folder_structure: Dict, shutdown_event: threading.Event, rag_ready_event: threading.Event) -> gr.Blocks:
     """Launch Gradio UI in a separate thread"""
     try:
         # Global variables for sources
@@ -354,9 +377,10 @@ def launch_gradio_ui(rag: RAGSystem, folder_structure: Dict, shutdown_event: thr
                 return "RAG system is still initializing, please wait..."
             
             # Check if RAG system is available
-            if rag is None:
+            if not rag_container.is_ready():
                 return "RAG system initialization failed. Please check the logs and restart the application."
             
+            rag = rag_container.get()
             result = rag.query(query_text)
             sources = [
                 (
@@ -520,7 +544,7 @@ def main():
     rag_ready_event = threading.Event()
     
     # Global variables for threads and resources
-    rag_system = None
+    rag_container = RAGSystemContainer()
     gradio_view = None
     rag_thread = None
     gradio_thread = None
@@ -548,8 +572,9 @@ def main():
             gradio_thread.join(timeout=5)
         
         # Cleanup RAG system resources if needed
-        if rag_system is not None:
+        if rag_container.is_ready():
             try:
+                rag_system = rag_container.get()
                 # Close LLM and embedding models if they have cleanup methods
                 if hasattr(rag_system.llm, 'close'):
                     rag_system.llm.close()
@@ -570,8 +595,7 @@ def main():
     
     # Start RAG initialization in a separate thread
     def rag_init_wrapper():
-        nonlocal rag_system
-        rag_system = initialize_rag_system(embedding_model_path, llm_model_path, shutdown_event, rag_ready_event)
+        initialize_rag_system(embedding_model_path, llm_model_path, shutdown_event, rag_ready_event, rag_container)
     
     rag_thread = threading.Thread(target=rag_init_wrapper, daemon=True)
     rag_thread.start()
@@ -579,7 +603,7 @@ def main():
     # Start Gradio server in a separate thread immediately (don't wait for RAG init)
     def gradio_wrapper():
         nonlocal gradio_view
-        gradio_view = launch_gradio_ui(rag_system, folder_structure, shutdown_event, rag_ready_event)
+        gradio_view = launch_gradio_ui(rag_container, folder_structure, shutdown_event, rag_ready_event)
     
     gradio_thread = threading.Thread(target=gradio_wrapper, daemon=True)
     gradio_thread.start()
