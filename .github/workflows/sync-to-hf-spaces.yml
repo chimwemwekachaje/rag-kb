@@ -23,7 +23,7 @@ jobs:
         
     - name: Add HuggingFace Space as remote
       run: |
-        git remote add hf-space https://${{ secrets.HF_USERNAME }}:${{ secrets.HF_TOKEN }}@huggingface.co/spaces/kachaje/llm-kb
+        git remote add hf-space https://huggingface.co/spaces/kachaje/llm-kb
         
     - name: Push to HuggingFace Space
       run: |
