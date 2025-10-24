@@ -92,11 +92,57 @@ act --dry-run
 3. **Dependency Caching**: Reduces build time and external dependencies
 4. **Multi-platform Builds**: Ensures compatibility across architectures
 
+## HuggingFace Spaces Deployment
+
+### Automatic Deployment
+
+The repository includes an automated deployment workflow (`sync-to-hf-spaces.yml`) that syncs the main branch to HuggingFace Spaces on every push.
+
+**Target Space**: [kachaje/llm-kb](https://huggingface.co/spaces/kachaje/llm-kb)
+
+### Setup Requirements
+
+1. **HuggingFace Token**: Add `HF_TOKEN` as a repository secret in GitHub Settings
+   - Go to Repository Settings → Secrets and variables → Actions
+   - Add new repository secret named `HF_TOKEN`
+   - Value should be your HuggingFace access token with write permissions
+
+2. **Space Configuration**: The Space is configured to use Docker SDK with the following metadata in README.md:
+   ```yaml
+   sdk: docker
+   app_port: 7860
+   ```
+
+### Deployment Process
+
+1. **Trigger**: Automatically runs on push to `main` branch
+2. **Sync**: Uses `git push --force` to sync repository to HF Space
+3. **Build**: HF Space automatically rebuilds using Docker
+4. **Runtime**: Application detects `HF_TOKEN` and uses HuggingFace sentence-transformers embeddings
+
+### Model Handling
+
+- **Local Development**: Uses GGUF models (nomic-embed-text, tinyllama) for offline operation
+- **HuggingFace Spaces**: Automatically switches to sentence-transformers/all-MiniLM-L6-v2 when `HF_TOKEN` is detected
+- **Benefits**: Faster startup, smaller image size, no large model downloads
+
+### Manual Deployment
+
+To manually trigger deployment:
+```bash
+# Push to main branch
+git push origin main
+
+# Or use GitHub CLI to trigger workflow
+gh workflow run sync-to-hf-spaces.yml
+```
+
 ## Monitoring
 
 - **GitHub Actions**: Check the Actions tab in your repository
 - **Coverage Reports**: Available in Codecov integration
 - **Container Registry**: View images in the Packages section of your repository
+- **HuggingFace Spaces**: Monitor deployment at [kachaje/llm-kb](https://huggingface.co/spaces/kachaje/llm-kb)
 
 ## Troubleshooting
 

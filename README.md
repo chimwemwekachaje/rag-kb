@@ -15,6 +15,7 @@ short_description: 'Ed Donner''s LLM Udemy course knowledge base '
 # Llama RAG Knowledge Base
 
 [![CI/CD Pipeline](https://github.com/chimwemwekachaje/rag-kb/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/chimwemwekachaje/rag-kb/actions/workflows/ci-cd.yml)
+[![HuggingFace Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-blue)](https://huggingface.co/spaces/kachaje/llm-kb)
 
 A Retrieval-Augmented Generation (RAG) knowledge base system using Llama.cpp and GGUF models. This application combines the power of local LLMs with document retrieval to provide accurate, context-aware responses.
 
@@ -25,6 +26,12 @@ A Retrieval-Augmented Generation (RAG) knowledge base system using Llama.cpp and
 - **Chunk-based Tracking**: Advanced chunk ID system for precise source tracking
 - **Configurable Models**: Support for custom model paths via CLI args or environment variables
 - **Gradio UI**: Modern web interface with PDF viewer integration
+
+## Live Demo
+
+🚀 **Try the live application**: [HuggingFace Spaces](https://huggingface.co/spaces/kachaje/llm-kb)
+
+The application is automatically deployed to HuggingFace Spaces and uses sentence-transformers for embeddings, providing faster startup and better performance in the cloud environment.
 
 ## Installation
 
@@ -112,6 +119,8 @@ export EMBEDDING_MODEL_PATH="path/to/embedding/model.gguf"
 export LLM_MODEL_PATH="path/to/llm/model.gguf"
 python app.py
 ```
+
+For HuggingFace Spaces deployment, set the `HF_TOKEN` environment variable to automatically use sentence-transformers embeddings instead of GGUF models. See `.env.example` for all available environment variables.
 
 ### Priority Order
 

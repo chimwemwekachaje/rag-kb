@@ -22,8 +22,19 @@ RUN pip install --no-cache-dir --only-binary=all -r requirements.txt
 
 # Copy application files
 COPY  app.py .
-COPY  models/ ./models/
 COPY  data/ ./data/
+
+# Conditionally copy models based on environment
+# For HuggingFace Spaces (when HF_TOKEN is set), skip large GGUF models
+# The app will automatically use sentence-transformers embeddings instead
+ARG HF_TOKEN=""
+RUN if [ -z "$HF_TOKEN" ]; then \
+        echo "Copying GGUF models for local deployment"; \
+        cp -r models/ ./models/; \
+    else \
+        echo "Skipping GGUF models for HuggingFace Spaces deployment"; \
+        mkdir -p ./models; \
+    fi
 
 # Create directory for ChromaDB
 RUN mkdir -p /app/chroma
