@@ -1,0 +1,50 @@
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.pytest_cache/
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+
+# ChromaDB directory (will be mounted as volume)
+chroma/
+test_chroma/
+
+# Git files
+.git/
+.gitignore
+
+# Package management
+uv.lock
+poetry.lock
+
+# Testing and coverage
+htmlcov/
+tests/
+TESTING_SUMMARY.md
+.coverage
+.pytest_cache/
+
+# Control scripts (not needed in container)
+*.sh
+
+# Documentation and development files
+README.md
+pyproject.toml
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db

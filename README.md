@@ -25,6 +25,53 @@ A Retrieval-Augmented Generation (RAG) knowledge base system using Llama.cpp and
 
 ## Installation
 
+### Docker Deployment (Recommended)
+
+The easiest way to run this application is using Docker, which includes all dependencies and models:
+
+#### Using Docker Compose (Recommended)
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd rag-kb
+
+# Start the application
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop the application
+docker-compose down
+```
+
+The application will be available at `http://localhost:7860`
+
+#### Using Docker directly
+
+```bash
+# Build the image
+docker build -t rag-kb .
+
+# Run the container with persistent data
+docker run -d \
+  --name rag-kb \
+  -p 7860:7860 \
+  -v rag-kb-data:/app/chroma \
+  rag-kb
+
+# View logs
+docker logs -f rag-kb
+
+# Stop and remove container
+docker stop rag-kb && docker rm rag-kb
+```
+
+**Note**: The Docker image is approximately 2-3GB due to the included GGUF models.
+
+### Manual Installation
+
 1. Clone or download this repository
 2. Install dependencies:
    ```bash
@@ -72,8 +119,11 @@ python app.py
 ## Directory Structure
 
 ```
-llama-rag-kb/
+rag-kb/
 ├── app.py                 # Main application
+├── Dockerfile            # Docker configuration
+├── docker-compose.yml    # Docker Compose configuration
+├── .dockerignore         # Docker ignore file
 ├── models/               # GGUF model files
 │   ├── nomic-embed-text-v1.5.Q4_K_M.gguf
 │   └── tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf
@@ -128,6 +178,35 @@ Use the included `ctl.sh` script for common operations:
 ./ctl.sh help     # Show help
 ```
 
+## Docker Volume Management
+
+### ChromaDB Persistence
+
+The ChromaDB vector database is stored in a Docker volume for persistence across container restarts:
+
+```bash
+# List volumes
+docker volume ls
+
+# Inspect the rag-kb-data volume
+docker volume inspect rag-kb-data
+
+# Remove the volume (this will delete all indexed data)
+docker volume rm rag-kb-data
+```
+
+### Reset Database in Docker
+
+To reset the vector database in a Docker container:
+
+```bash
+# Using docker-compose
+docker-compose exec rag-kb python app.py --reset
+
+# Using docker directly
+docker exec rag-kb python app.py --reset
+```
+
 ## Troubleshooting
 
 ### Model Not Found
@@ -139,7 +218,11 @@ Ensure your GGUF models are in the correct location and have the right filenames
 If you encounter database corruption or want to start fresh:
 
 ```bash
+# Local installation
 python app.py --reset
+
+# Docker installation
+docker-compose exec rag-kb python app.py --reset
 ```
 
 ### Memory Issues
@@ -148,6 +231,30 @@ For large documents or limited memory, consider:
 - Using smaller chunk sizes
 - Reducing the number of retrieved documents (k parameter)
 - Using quantized models (Q4_K_M, Q5_K_M, etc.)
+
+### Docker Build Issues
+
+If you encounter issues building the Docker image:
+
+```bash
+# Clean build (no cache)
+docker build --no-cache -t rag-kb .
+
+# Check build logs
+docker build -t rag-kb . 2>&1 | tee build.log
+```
+
+### Container Health Check
+
+The Docker Compose configuration includes a health check. Monitor container health:
+
+```bash
+# Check container status
+docker-compose ps
+
+# View health check logs
+docker inspect rag-kb | grep -A 10 Health
+```
 
 ## License
 
